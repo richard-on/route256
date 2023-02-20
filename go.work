@@ -2,7 +2,7 @@ go 1.19
 
 use (
 	./checkout
-	./libs
+	./lib
 	./loms
-	./notifications
+	./notification
 )
