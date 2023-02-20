@@ -11,11 +11,11 @@ type StockChecker interface {
 }*/
 
 type ProductLister interface {
-	GetProduct(ctx context.Context, sku uint32) (Info, error)
+	GetProduct(ctx context.Context, sku uint32) (ProductInfo, error)
 }
 
 type OrderCreator interface {
-	Order(ctx context.Context, user int64) error
+	Order(ctx context.Context, user int64) (OrderInfo, error)
 }
 
 type Domain struct {

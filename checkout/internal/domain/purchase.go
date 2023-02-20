@@ -1,12 +1,18 @@
 package domain
 
-import "context"
+import (
+	"context"
+)
 
-func (d *Domain) CreateOrder(ctx context.Context, user int64) error {
-	err := d.orderCreator.Order(ctx, user)
+type OrderInfo struct {
+	OrderID int64
+}
+
+func (d *Domain) CreateOrder(ctx context.Context, user int64) (OrderInfo, error) {
+	orderInfo, err := d.orderCreator.Order(ctx, user)
 	if err != nil {
-		return err
+		return OrderInfo{}, err
 	}
 
-	return nil
+	return orderInfo, nil
 }

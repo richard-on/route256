@@ -9,7 +9,7 @@ type Item struct {
 	Price uint32 `json:"price"`
 }
 
-type Info struct {
+type ProductInfo struct {
 	Name  string `json:"name"`
 	Price uint32 `json:"price"`
 }

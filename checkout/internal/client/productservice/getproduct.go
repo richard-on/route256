@@ -17,7 +17,7 @@ type ProductResponse struct {
 	Price uint32 `json:"price"`
 }
 
-func (c *Client) GetProduct(ctx context.Context, sku uint32) (domain.Info, error) {
+func (c *Client) GetProduct(ctx context.Context, sku uint32) (domain.ProductInfo, error) {
 	request := ProductRequest{
 		Token: c.token,
 		SKU:   sku,
@@ -25,10 +25,10 @@ func (c *Client) GetProduct(ctx context.Context, sku uint32) (domain.Info, error
 
 	response, err := wrapper.NewRequest(ctx, c.urlList, http.MethodPost, request, ProductResponse{})
 	if err != nil {
-		return domain.Info{}, err
+		return domain.ProductInfo{}, err
 	}
 
-	return domain.Info{
+	return domain.ProductInfo{
 		Name:  response.Name,
 		Price: response.Price,
 	}, nil

@@ -22,6 +22,10 @@ type Request struct {
 	User int64 `json:"user"`
 }
 
+type Response struct {
+	OrderID int64 `json:"orderID"`
+}
+
 func (r Request) Validate() error {
 	if r.User <= 0 {
 		return handler.ErrEmptyUser
@@ -30,15 +34,15 @@ func (r Request) Validate() error {
 	return nil
 }
 
-type Response struct{}
-
 func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
 	log.Printf("listCart: %+v", req)
 
-	err := h.domain.CreateOrder(ctx, req.User)
+	orderInfo, err := h.domain.CreateOrder(ctx, req.User)
 	if err != nil {
 		return Response{}, err
 	}
 
-	return Response{}, nil
+	return Response{
+		OrderID: orderInfo.OrderID,
+	}, nil
 }
