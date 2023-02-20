@@ -2,15 +2,14 @@ package app
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"route256/checkout/config"
 	"route256/checkout/internal/client/loms"
 	"route256/checkout/internal/client/productservice"
-	"route256/checkout/internal/domain/cart"
-	"route256/checkout/internal/domain/list"
-	purchasedomain "route256/checkout/internal/domain/purchase"
+	"route256/checkout/internal/domain"
 	"route256/checkout/internal/handler/addtocart"
 	"route256/checkout/internal/handler/deletefromcart"
 	"route256/checkout/internal/handler/listcart"
@@ -18,9 +17,8 @@ import (
 	"route256/lib/logger"
 	"route256/lib/server/wrapper"
 	"syscall"
-	"time"
 
-	"github.com/rs/zerolog"
+	"github.com/pkg/errors"
 )
 
 func Run(cfg *config.Config) {
@@ -28,42 +26,52 @@ func Run(cfg *config.Config) {
 		os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
 	defer cancel()
 
-	log := logger.NewLogger(
-		zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339},
+	log := logger.New(
+		os.Stdout, //zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339},
 		cfg.Log.Level,
-		"checkout",
+		cfg.Service.Name,
 	)
 	log.Info().Msg("config and logger init success")
 
 	lomsClient := loms.New(cfg.LOMS.URL)
-	stockCheck := cart.NewChecker(lomsClient)
-	addToCart := addtocart.New(stockCheck)
-
-	deleteFromCart := deletefromcart.New()
-
 	productClient := productservice.New(
 		cfg.ProductService.URL,
 		cfg.ProductService.Token,
 	)
-	productInfo := list.New(productClient)
-	listCart := listcart.New(productInfo)
 
-	orderCreate := purchasedomain.New(lomsClient)
-	purchase := purchasehandler.New(orderCreate)
+	model := domain.New(lomsClient, productClient, lomsClient)
+
+	addToCart := addtocart.New(model)
+	deleteFromCart := deletefromcart.New()
+	listCart := listcart.New(model)
+	purchase := purchasehandler.New(model)
 
 	http.Handle("/addToCart", wrapper.New(addToCart.Handle))
 	http.Handle("/deleteFromCart", wrapper.New(deleteFromCart.Handle))
 	http.Handle("/listCart", wrapper.New(listCart.Handle))
 	http.Handle("/purchase", wrapper.New(purchase.Handle))
 
+	httpServer := http.Server{
+		Addr:         net.JoinHostPort("", cfg.HTTP.Port),
+		ReadTimeout:  cfg.HTTP.ReadTimeout,
+		WriteTimeout: cfg.HTTP.WriteTimeout,
+	}
+
 	go func() {
-		err := http.ListenAndServe(":"+cfg.HTTP.Port, nil)
-		if err != nil {
-			log.Fatal().Err(err).Msg("cannot listen http")
+		if err := httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal().Err(err).Msg("error while running http server")
 		}
 	}()
 
 	<-ctx.Done()
 	cancel()
+
+	ctx, shutdown := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
+	defer shutdown()
+
 	log.Info().Msg("shutting down: checkout service")
+	err := httpServer.Shutdown(ctx)
+	if err != nil {
+		log.Fatal().Err(err).Msg("cannot shutdown http server")
+	}
 }

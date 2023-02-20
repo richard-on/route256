@@ -1,3 +1,3 @@
-module route256/notifications
+module route256/notification
 
 go 1.20

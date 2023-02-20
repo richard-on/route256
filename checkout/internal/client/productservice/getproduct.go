@@ -3,7 +3,7 @@ package productservice
 import (
 	"context"
 	"net/http"
-	"route256/checkout/internal/domain/product"
+	"route256/checkout/internal/domain"
 	"route256/lib/client/wrapper"
 )
 
@@ -17,7 +17,7 @@ type ProductResponse struct {
 	Price uint32 `json:"price"`
 }
 
-func (c *Client) GetProduct(ctx context.Context, sku uint32) (product.Info, error) {
+func (c *Client) GetProduct(ctx context.Context, sku uint32) (domain.Info, error) {
 	request := ProductRequest{
 		Token: c.token,
 		SKU:   sku,
@@ -25,10 +25,10 @@ func (c *Client) GetProduct(ctx context.Context, sku uint32) (product.Info, erro
 
 	response, err := wrapper.NewRequest(ctx, c.urlList, http.MethodPost, request, ProductResponse{})
 	if err != nil {
-		return product.Info{}, err
+		return domain.Info{}, err
 	}
 
-	return product.Info{
+	return domain.Info{
 		Name:  response.Name,
 		Price: response.Price,
 	}, nil

@@ -6,18 +6,14 @@ LINTVER=v1.51.1
 LINTBIN=${BINDIR}/lint_${GOVER}_${LINTVER}
 PACKAGE=route256/loms/cmd/app
 BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
-ENV=development
 APPVER=0.0.1
 
 all: format build test lint
 
 build: bindir
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-	go build -ldflags="-X main.Version=${APPVER} \
- 					   -X main.Build=${BUILDDATE} \
- 					   -X main.Environment=${ENV} \
- 					   -X main.GoVersion=${GOVER}" \
- 					   -o ${BINDIR}/app ${PACKAGE}
+	go build -ldflags="-X main.Version=${APPVER} -X main.Build=${BUILDDATE}" \
+ 					   		-o ${BINDIR}/app ${PACKAGE}
 
 test:
 	go test ./...

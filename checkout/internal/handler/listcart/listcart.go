@@ -2,18 +2,19 @@ package listcart
 
 import (
 	"context"
-	"log"
-	"route256/checkout/internal/domain/list"
+	"route256/checkout/internal/domain"
 	"route256/checkout/internal/handler"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Handler struct {
-	list *list.List
+	domain *domain.Domain
 }
 
-func New(list *list.List) *Handler {
+func New(domain *domain.Domain) *Handler {
 	return &Handler{
-		list: list,
+		domain: domain,
 	}
 }
 
@@ -22,7 +23,7 @@ type Request struct {
 }
 
 func (r Request) Validate() error {
-	if r.User == 0 {
+	if r.User <= 0 {
 		return handler.ErrEmptyUser
 	}
 
@@ -30,14 +31,14 @@ func (r Request) Validate() error {
 }
 
 type Response struct {
-	Items      []list.Item `json:"items"`
-	TotalPrice uint32      `json:"totalPrice"`
+	Items      []domain.Item `json:"items"`
+	TotalPrice uint32        `json:"totalPrice"`
 }
 
 func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
 	log.Printf("listCart: %+v", req)
 
-	items, err := h.list.List(ctx, req.User)
+	items, err := h.domain.ListCart(ctx, req.User)
 	if err != nil {
 		return Response{}, err
 	}

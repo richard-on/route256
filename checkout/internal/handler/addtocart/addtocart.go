@@ -2,18 +2,19 @@ package addtocart
 
 import (
 	"context"
-	"log"
-	"route256/checkout/internal/domain/cart"
+	"route256/checkout/internal/domain"
 	"route256/checkout/internal/handler"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Handler struct {
-	check *cart.Check
+	domain *domain.Domain
 }
 
-func New(check *cart.Check) *Handler {
+func New(domain *domain.Domain) *Handler {
 	return &Handler{
-		check: check,
+		domain: domain,
 	}
 }
 
@@ -46,7 +47,7 @@ func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
 
 	var response Response
 
-	err := h.check.Add(ctx, req.User, req.Sku, req.Count)
+	err := h.domain.AddToCart(ctx, req.User, req.Sku, req.Count)
 	if err != nil {
 		return response, err
 	}

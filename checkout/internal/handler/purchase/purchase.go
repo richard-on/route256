@@ -2,18 +2,19 @@ package purchase
 
 import (
 	"context"
-	"log"
-	"route256/checkout/internal/domain/purchase"
+	"route256/checkout/internal/domain"
 	"route256/checkout/internal/handler"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Handler struct {
-	order *purchase.Order
+	domain *domain.Domain
 }
 
-func New(order *purchase.Order) *Handler {
+func New(domain *domain.Domain) *Handler {
 	return &Handler{
-		order: order,
+		domain: domain,
 	}
 }
 
@@ -22,7 +23,7 @@ type Request struct {
 }
 
 func (r Request) Validate() error {
-	if r.User == 0 {
+	if r.User <= 0 {
 		return handler.ErrEmptyUser
 	}
 
@@ -34,7 +35,7 @@ type Response struct{}
 func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
 	log.Printf("listCart: %+v", req)
 
-	err := h.order.Create(ctx, req.User)
+	err := h.domain.CreateOrder(ctx, req.User)
 	if err != nil {
 		return Response{}, err
 	}

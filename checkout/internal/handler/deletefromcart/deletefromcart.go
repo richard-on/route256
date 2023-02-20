@@ -2,19 +2,16 @@ package deletefromcart
 
 import (
 	"context"
-	"log"
-	"route256/checkout/internal/domain/cart"
 	"route256/checkout/internal/handler"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Handler struct {
-	cart *cart.Delete
 }
 
 func New() *Handler {
-	return &Handler{
-		cart: cart.NewDeleter(),
-	}
+	return &Handler{}
 }
 
 type Request struct {
@@ -24,7 +21,7 @@ type Request struct {
 }
 
 func (r Request) Validate() error {
-	if r.User == 0 {
+	if r.User <= 0 {
 		return handler.ErrEmptyUser
 	}
 
@@ -44,12 +41,5 @@ type Response struct{}
 func (h *Handler) Handle(ctx context.Context, req Request) (Response, error) {
 	log.Printf("deleteFromCart: %+v", req)
 
-	var response Response
-
-	err := h.cart.Delete(ctx, req.User, req.Sku, req.Count)
-	if err != nil {
-		return response, err
-	}
-
-	return response, nil
+	return Response{}, nil
 }

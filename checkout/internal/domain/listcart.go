@@ -1,4 +1,4 @@
-package list
+package domain
 
 import "context"
 
@@ -9,7 +9,12 @@ type Item struct {
 	Price uint32 `json:"price"`
 }
 
-func (l *List) List(ctx context.Context, user int64) ([]Item, error) {
+type Info struct {
+	Name  string `json:"name"`
+	Price uint32 `json:"price"`
+}
+
+func (d *Domain) ListCart(ctx context.Context, user int64) ([]Item, error) {
 
 	items := []Item{
 		{
@@ -23,7 +28,7 @@ func (l *List) List(ctx context.Context, user int64) ([]Item, error) {
 	}
 
 	for i, item := range items {
-		product, err := l.lister.GetProduct(ctx, item.SKU)
+		product, err := d.productLister.GetProduct(ctx, item.SKU)
 		if err != nil {
 			return nil, err
 		}

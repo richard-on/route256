@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/rs/zerolog/log"
 	"route256/loms/config"
 	"route256/loms/internal/app"
 	"runtime"
+
+	"github.com/rs/zerolog/log"
 )
 
 var (

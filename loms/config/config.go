@@ -3,6 +3,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -12,7 +13,7 @@ type Config struct {
 	Service             `yaml:"service"`
 	Log                 `yaml:"log"`
 	HTTP                `yaml:"http"`
-	LOMS                `yaml:"loms"`
+	Checkout            `yaml:"checkout"`
 	ProductService      `yaml:"productService"`
 	NotificationService `yaml:"notificationService"`
 }
@@ -26,10 +27,13 @@ type Log struct {
 }
 
 type HTTP struct {
-	Port string `yaml:"port"`
+	Port            string        `yaml:"port"`
+	ReadTimeout     time.Duration `yaml:"readTimeout"`
+	WriteTimeout    time.Duration `yaml:"writeTimeout"`
+	ShutdownTimeout time.Duration `yaml:"shutdownTimeout"`
 }
 
-type LOMS struct {
+type Checkout struct {
 	URL string `yaml:"url"`
 }
 

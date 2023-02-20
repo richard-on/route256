@@ -1,4 +1,4 @@
-package cart
+package domain
 
 import (
 	"context"
@@ -10,8 +10,13 @@ var (
 	ErrInsufficientStocks = errors.New("insufficient stock")
 )
 
-func (c *Check) Add(ctx context.Context, user int64, sku uint32, count uint16) error {
-	stocks, err := c.checker.Stock(ctx, sku)
+type Stock struct {
+	WarehouseID int64  `json:"warehouseID"`
+	Count       uint64 `json:"count"`
+}
+
+func (d *Domain) AddToCart(ctx context.Context, user int64, sku uint32, count uint16) error {
+	stocks, err := d.stockChecker.Stock(ctx, sku)
 	if err != nil {
 		return errors.WithMessage(err, "checking stock")
 	}

@@ -3,7 +3,7 @@ package loms
 import (
 	"context"
 	"net/http"
-	"route256/checkout/internal/domain/cart"
+	"route256/checkout/internal/domain"
 	"route256/lib/client/wrapper"
 )
 
@@ -20,7 +20,7 @@ type StockResponse struct {
 	Stock []StockItem `json:"stocks"`
 }
 
-func (c *Client) Stock(ctx context.Context, sku uint32) ([]cart.Stock, error) {
+func (c *Client) Stock(ctx context.Context, sku uint32) ([]domain.Stock, error) {
 	request := StockRequest{SKU: sku}
 
 	response, err := wrapper.NewRequest(ctx, c.urlStock, http.MethodPost, request, StockResponse{})
@@ -28,9 +28,9 @@ func (c *Client) Stock(ctx context.Context, sku uint32) ([]cart.Stock, error) {
 		return nil, err
 	}
 
-	stocks := make([]cart.Stock, 0, len(response.Stock))
+	stocks := make([]domain.Stock, 0, len(response.Stock))
 	for _, s := range response.Stock {
-		stocks = append(stocks, cart.Stock{
+		stocks = append(stocks, domain.Stock{
 			WarehouseID: s.WarehouseID,
 			Count:       s.Count,
 		})

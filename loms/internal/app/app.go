@@ -2,7 +2,7 @@ package app
 
 import (
 	"context"
-	"github.com/rs/zerolog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,7 +15,8 @@ import (
 	"route256/loms/internal/handler/pay"
 	stockhandler "route256/loms/internal/handler/stock"
 	"syscall"
-	"time"
+
+	"github.com/pkg/errors"
 )
 
 func Run(cfg *config.Config) {
@@ -23,10 +24,10 @@ func Run(cfg *config.Config) {
 		os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
 	defer cancel()
 
-	log := logger.NewLogger(
-		zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339},
+	log := logger.New(
+		os.Stdout, //zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339},
 		cfg.Log.Level,
-		"logistics and order management system",
+		cfg.Service.Name,
 	)
 	log.Info().Msg("config and logger init success")
 
@@ -42,14 +43,27 @@ func Run(cfg *config.Config) {
 	http.Handle("/cancelOrder", wrapper.New(cancelOrder.Handle))
 	http.Handle("/stocks", wrapper.New(stock.Handle))
 
+	httpServer := http.Server{
+		Addr:         net.JoinHostPort("", cfg.HTTP.Port),
+		ReadTimeout:  cfg.HTTP.ReadTimeout,
+		WriteTimeout: cfg.HTTP.WriteTimeout,
+	}
+
 	go func() {
-		err := http.ListenAndServe(":"+cfg.HTTP.Port, nil)
-		if err != nil {
-			log.Fatal().Err(err).Msg("cannot listen http")
+		if err := httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			log.Fatal().Err(err).Msg("error while running http server")
 		}
 	}()
 
 	<-ctx.Done()
 	cancel()
+
+	ctx, shutdown := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
+	defer shutdown()
+
 	log.Info().Msg("shutting down: logistics and order management system")
+	err := httpServer.Shutdown(ctx)
+	if err != nil {
+		log.Fatal().Err(err).Msg("cannot shutdown http server")
+	}
 }
