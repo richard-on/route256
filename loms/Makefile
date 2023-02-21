@@ -5,11 +5,15 @@ SMARTIMPORTS=${BINDIR}/smartimports_${GOVER}
 LINTVER=v1.51.1
 LINTBIN=${BINDIR}/lint_${GOVER}_${LINTVER}
 PACKAGE=route256/loms/cmd/app
+BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
+APPVER=0.0.1
 
 all: format build test lint
 
 build: bindir
-	go build -o ${BINDIR}/app ${PACKAGE}
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+	go build -ldflags="-X main.Version=${APPVER} -X main.Build=${BUILDDATE}" \
+ 					   		-o ${BINDIR}/app ${PACKAGE}
 
 test:
 	go test ./...

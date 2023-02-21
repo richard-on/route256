@@ -1,8 +1,8 @@
 package main
 
 import (
-	"route256/loms/config"
-	"route256/loms/internal/app"
+	"route256/notification/config"
+	"route256/notification/internal/app"
 	"runtime"
 
 	"github.com/rs/zerolog/log"
@@ -19,7 +19,7 @@ func main() {
 		log.Fatal().Err(err).Msg("config load fail")
 	}
 
-	log.Info().Msgf("checkout service: version=%v, build=%v, go version=%v",
+	log.Info().Msgf("notification service: version=%v, build=%v, go version=%v",
 		Version, Build, runtime.Version())
 
 	app.Run(cfg)

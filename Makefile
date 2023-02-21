@@ -2,12 +2,12 @@
 build-all:
 	cd checkout && make build
 	cd loms && make build
-	cd notifications && make build
+	cd notification && make build
 
 run-all: build-all
-	sudo docker compose up --force-recreate --build
+	docker compose up --force-recreate --build
 
 precommit:
 	cd checkout && make precommit
 	cd loms && make precommit
-	cd notifications && make precommit
+	cd notification && make precommit
