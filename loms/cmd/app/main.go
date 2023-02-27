@@ -1,3 +1,4 @@
+// LOMS (Logistics and Order Management System) handles order management and logistics.
 package main
 
 import (

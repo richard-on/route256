@@ -11,7 +11,7 @@ type Logger struct {
 	log zerolog.Logger
 }
 
-// New creates a new Logger
+// New creates a new Logger.
 func New(out io.Writer, level string, serviceName string) Logger {
 	var logLevel zerolog.Level
 	logLevel, err := zerolog.ParseLevel(level)

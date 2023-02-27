@@ -3,12 +3,12 @@ package app
 import (
 	"context"
 	"fmt"
-	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
+	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/pkg/errors"
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
