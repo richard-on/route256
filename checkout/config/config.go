@@ -12,7 +12,7 @@ import (
 type Config struct {
 	Service             `yaml:"service"`
 	Log                 `yaml:"log"`
-	HTTP                `yaml:"http"`
+	GRPC                `yaml:"grpc"`
 	LOMS                `yaml:"loms"`
 	ProductService      `yaml:"productService"`
 	NotificationService `yaml:"notificationService"`
@@ -26,10 +26,8 @@ type Log struct {
 	Level string `yaml:"logLevel"`
 }
 
-type HTTP struct {
+type GRPC struct {
 	Port            string        `yaml:"port"`
-	ReadTimeout     time.Duration `yaml:"readTimeout"`
-	WriteTimeout    time.Duration `yaml:"writeTimeout"`
 	ShutdownTimeout time.Duration `yaml:"shutdownTimeout"`
 }
 

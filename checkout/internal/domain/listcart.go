@@ -3,15 +3,15 @@ package domain
 import "context"
 
 type Item struct {
-	SKU   uint32 `json:"sku"`
-	Count uint16 `json:"count"`
-	Name  string `json:"name"`
-	Price uint32 `json:"price"`
+	SKU   uint32
+	Count uint16
+	Name  string
+	Price uint32
 }
 
 type ProductInfo struct {
-	Name  string `json:"name"`
-	Price uint32 `json:"price"`
+	Name  string
+	Price uint32
 }
 
 func (d *Domain) ListCart(ctx context.Context, user int64) ([]Item, error) {

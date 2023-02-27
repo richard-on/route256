@@ -1,4 +1,4 @@
-module route256/lib
+module gitlab.ozon.dev/rragusskiy/homework-1/lib
 
 go 1.19
 

@@ -3,20 +3,18 @@ package app
 import (
 	"context"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
-	"route256/lib/logger"
-	"route256/lib/server/wrapper"
-	"route256/loms/config"
-	cancelorder "route256/loms/internal/handler/cancel"
-	"route256/loms/internal/handler/create"
-	"route256/loms/internal/handler/list"
-	"route256/loms/internal/handler/pay"
-	stockhandler "route256/loms/internal/handler/stock"
 	"syscall"
 
 	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
+	lomsservice "gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/api/loms"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func Run(cfg *config.Config) {
@@ -31,39 +29,28 @@ func Run(cfg *config.Config) {
 	)
 	log.Info().Msg("config and logger init success")
 
-	createOrder := create.New()
-	listOrder := list.New()
-	payedOrder := pay.New()
-	cancelOrder := cancelorder.New()
-	stock := stockhandler.New()
-
-	http.Handle("/createOrder", wrapper.New(createOrder.Handle))
-	http.Handle("/listOrder", wrapper.New(listOrder.Handle))
-	http.Handle("/orderPayed", wrapper.New(payedOrder.Handle))
-	http.Handle("/cancelOrder", wrapper.New(cancelOrder.Handle))
-	http.Handle("/stocks", wrapper.New(stock.Handle))
-
-	httpServer := http.Server{
-		Addr:         net.JoinHostPort("", cfg.HTTP.Port),
-		ReadTimeout:  cfg.HTTP.ReadTimeout,
-		WriteTimeout: cfg.HTTP.WriteTimeout,
+	listener, err := net.Listen("tcp", net.JoinHostPort("", cfg.GRPC.Port))
+	if err != nil {
+		log.Fatal().Err(err).Msg("error while creating listener")
 	}
 
+	model := domain.New()
+
+	s := grpc.NewServer()
+
+	reflection.Register(s)
+	loms.RegisterLOMSServer(s, lomsservice.New(model))
+
 	go func() {
-		if err := httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			log.Fatal().Err(err).Msg("error while running http server")
+		if err = s.Serve(listener); !errors.Is(err, grpc.ErrServerStopped) {
+			log.Fatal().Err(err).Msg("error while running grpc server")
 		}
 	}()
+	log.Info().Msgf("grpc server listening at %v", listener.Addr())
 
 	<-ctx.Done()
 	cancel()
 
-	ctx, shutdown := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
-	defer shutdown()
-
-	log.Info().Msg("shutting down: logistics and order management system")
-	err := httpServer.Shutdown(ctx)
-	if err != nil {
-		log.Fatal().Err(err).Msg("cannot shutdown http server")
-	}
+	log.Info().Msg("shutting down: loms service")
+	s.GracefulStop()
 }

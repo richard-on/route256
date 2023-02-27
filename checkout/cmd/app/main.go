@@ -2,11 +2,11 @@
 package main
 
 import (
-	"route256/checkout/config"
-	"route256/checkout/internal/app"
 	"runtime"
 
 	"github.com/rs/zerolog/log"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/app"
 )
 
 var (

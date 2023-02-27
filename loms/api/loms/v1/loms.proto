@@ -1,0 +1,69 @@
+syntax="proto3";
+
+package loms;
+
+option go_package="https://gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms;loms";
+
+import "google/protobuf/empty.proto";
+
+service LOMS {
+  rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc ListOrder(ListOrderRequest) returns (ListOrderResponse);
+  rpc OrderPayed(OrderPayedRequest) returns (google.protobuf.Empty);
+  rpc CancelOrder(CancelOrderRequest) returns (google.protobuf.Empty);
+  rpc Stocks(StocksRequest) returns (StocksResponse);
+}
+
+message Item {
+  uint32 sku = 1;
+  uint32 count = 2;
+}
+
+message CreateOrderRequest {
+  int64 user = 1;
+  repeated Item items = 2;
+}
+
+message CreateOrderResponse {
+  int64 order_id = 1;
+}
+
+message ListOrderRequest {
+  int64 order_id = 1;
+}
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_NEW = 1;
+  STATUS_AWAITING_PAYMENT = 2;
+  STATUS_FAILED = 3;
+  STATUS_PAYED = 4;
+  STATUS_CANCELLED = 5;
+}
+
+message ListOrderResponse {
+  Status status = 1;
+  int64 user = 2;
+  repeated Item items = 3;
+}
+
+message OrderPayedRequest {
+  int64 order_id = 1;
+}
+
+message CancelOrderRequest {
+  int64 order_id = 1;
+}
+
+message StocksRequest {
+  uint32 sku = 1;
+}
+
+message Stock {
+  int64 warehouse_id = 1;
+  uint64 count = 2;
+}
+
+message StocksResponse {
+  repeated Stock stocks = 1;
+}

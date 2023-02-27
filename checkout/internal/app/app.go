@@ -3,22 +3,21 @@ package app
 import (
 	"context"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
-	"route256/checkout/config"
-	"route256/checkout/internal/client/loms"
-	"route256/checkout/internal/client/productservice"
-	"route256/checkout/internal/domain"
-	"route256/checkout/internal/handler/addtocart"
-	"route256/checkout/internal/handler/deletefromcart"
-	"route256/checkout/internal/handler/listcart"
-	purchasehandler "route256/checkout/internal/handler/purchase"
-	"route256/lib/logger"
-	"route256/lib/server/wrapper"
 	"syscall"
 
 	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
+	checkoutservice "gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/api/checkout"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/client/grpc/loms"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/client/grpc/productservice"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/reflection"
 )
 
 func Run(cfg *config.Config) {
@@ -33,45 +32,41 @@ func Run(cfg *config.Config) {
 	)
 	log.Info().Msg("config and logger init success")
 
-	lomsClient := loms.New(cfg.LOMS.URL)
-	productClient := productservice.New(
-		cfg.ProductService.URL,
-		cfg.ProductService.Token,
-	)
+	lomsConn, err := grpc.Dial(cfg.LOMS.URL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal().Err(err).Msg("error while dialing loms grpc server")
+	}
+	lomsClient := loms.NewClient(lomsConn)
+
+	productConn, err := grpc.Dial(cfg.ProductService.URL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal().Err(err).Msg("error while dialing product service grpc server")
+	}
+	productClient := productservice.NewClient(productConn, cfg.ProductService.Token)
 
 	model := domain.New(lomsClient, productClient, lomsClient)
 
-	addToCart := addtocart.New(model)
-	deleteFromCart := deletefromcart.New()
-	listCart := listcart.New(model)
-	purchase := purchasehandler.New(model)
-
-	http.Handle("/addToCart", wrapper.New(addToCart.Handle))
-	http.Handle("/deleteFromCart", wrapper.New(deleteFromCart.Handle))
-	http.Handle("/listCart", wrapper.New(listCart.Handle))
-	http.Handle("/purchase", wrapper.New(purchase.Handle))
-
-	httpServer := http.Server{
-		Addr:         net.JoinHostPort("", cfg.HTTP.Port),
-		ReadTimeout:  cfg.HTTP.ReadTimeout,
-		WriteTimeout: cfg.HTTP.WriteTimeout,
+	listener, err := net.Listen("tcp", net.JoinHostPort("", cfg.GRPC.Port))
+	if err != nil {
+		log.Fatal().Err(err).Msg("error while creating listener")
 	}
 
+	s := grpc.NewServer()
+	reflection.Register(s)
+	checkout.RegisterCheckoutServer(s, checkoutservice.New(model))
+
 	go func() {
-		if err := httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			log.Fatal().Err(err).Msg("error while running http server")
+		if err = s.Serve(listener); !errors.Is(err, grpc.ErrServerStopped) {
+			log.Fatal().Err(err).Msg("error while running grpc server")
 		}
 	}()
+	log.Info().Msgf("grpc server listening at %v", listener.Addr())
 
 	<-ctx.Done()
 	cancel()
 
-	ctx, shutdown := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
-	defer shutdown()
-
 	log.Info().Msg("shutting down: checkout service")
-	err := httpServer.Shutdown(ctx)
-	if err != nil {
-		log.Fatal().Err(err).Msg("cannot shutdown http server")
-	}
+	s.GracefulStop()
 }

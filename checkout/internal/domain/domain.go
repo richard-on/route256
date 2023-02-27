@@ -3,12 +3,8 @@ package domain
 import "context"
 
 type StockChecker interface {
-	Stock(ctx context.Context, sku uint32) ([]Stock, error)
+	Stock(ctx context.Context, sku uint32) ([]*Stock, error)
 }
-
-/*type CartDeleter interface {
-	Delete(ctx context.Context, user int64, sku uint32, count uint16)
-}*/
 
 type ProductLister interface {
 	GetProduct(ctx context.Context, sku uint32) (ProductInfo, error)
@@ -19,8 +15,7 @@ type OrderCreator interface {
 }
 
 type Domain struct {
-	stockChecker StockChecker
-	//cartDeleter   CartDeleter
+	stockChecker  StockChecker
 	productLister ProductLister
 	orderCreator  OrderCreator
 }
