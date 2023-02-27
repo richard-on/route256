@@ -27,8 +27,11 @@ type AddToCartRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	User  int64  `protobuf:"varint,1,opt,name=user,proto3" json:"user,omitempty"`
-	Sku   uint32 `protobuf:"varint,2,opt,name=sku,proto3" json:"sku,omitempty"`
+	// User ID.
+	User int64 `protobuf:"varint,1,opt,name=user,proto3" json:"user,omitempty"`
+	// SKU is the product's stock keeping unit.
+	Sku uint32 `protobuf:"varint,2,opt,name=sku,proto3" json:"sku,omitempty"`
+	// Count is the number of product's with this SKU to add.
 	Count uint32 `protobuf:"varint,3,opt,name=count,proto3" json:"count,omitempty"`
 }
 
@@ -90,8 +93,11 @@ type DeleteFromCartRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	User  int64  `protobuf:"varint,1,opt,name=user,proto3" json:"user,omitempty"`
-	Sku   uint32 `protobuf:"varint,2,opt,name=sku,proto3" json:"sku,omitempty"`
+	// User ID.
+	User int64 `protobuf:"varint,1,opt,name=user,proto3" json:"user,omitempty"`
+	// SKU is the product's stock keeping unit.
+	Sku uint32 `protobuf:"varint,2,opt,name=sku,proto3" json:"sku,omitempty"`
+	// Count is the number of product's with this SKU to delete.
 	Count uint32 `protobuf:"varint,3,opt,name=count,proto3" json:"count,omitempty"`
 }
 
@@ -153,6 +159,7 @@ type ListCartRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// User ID.
 	User int64 `protobuf:"varint,1,opt,name=user,proto3" json:"user,omitempty"`
 }
 
@@ -195,14 +202,19 @@ func (x *ListCartRequest) GetUser() int64 {
 	return 0
 }
 
+// Item represents a product in the cart.
 type Item struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Sku   uint32 `protobuf:"varint,1,opt,name=sku,proto3" json:"sku,omitempty"`
+	// SKU is the product's stock keeping unit.
+	Sku uint32 `protobuf:"varint,1,opt,name=sku,proto3" json:"sku,omitempty"`
+	// Count is the number of product's with this SKU in a cart.
 	Count uint32 `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
-	Name  string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Name of the product.
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Price of a single product.
 	Price uint32 `protobuf:"varint,4,opt,name=price,proto3" json:"price,omitempty"`
 }
 
@@ -271,8 +283,10 @@ type ListCartResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Items      []*Item `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	TotalPrice uint32  `protobuf:"varint,2,opt,name=total_price,json=totalPrice,proto3" json:"total_price,omitempty"`
+	// Items is the list of all products in the cart.
+	Items []*Item `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	// Total price for all products in user's cart.
+	TotalPrice uint32 `protobuf:"varint,2,opt,name=total_price,json=totalPrice,proto3" json:"total_price,omitempty"`
 }
 
 func (x *ListCartResponse) Reset() {
@@ -326,6 +340,7 @@ type PurchaseRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// User ID.
 	User int64 `protobuf:"varint,1,opt,name=user,proto3" json:"user,omitempty"`
 }
 

@@ -7,7 +7,7 @@ LINTBIN=${BINDIR}/lint_${GOVER}_${LINTVER}
 PACKAGE=gitlab.ozon.dev/rragusskiy/homework-1/productservice/cmd/app
 RPCNAME=product.proto
 PROTOPATH=api/product/v1
-RPCPATH=pkg/checkout
+RPCPATH=pkg/product
 BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
 APPVER=0.1.0
 

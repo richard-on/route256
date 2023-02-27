@@ -6,9 +6,10 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"
 )
 
-func (i *Implementation) ListOrder(ctx context.Context, req *loms.ListOrderRequest) (*loms.ListOrderResponse, error) {
+// ListOrder lists order information.
+func (l *LOMS) ListOrder(ctx context.Context, req *loms.ListOrderRequest) (*loms.ListOrderResponse, error) {
 
-	orderInfo, err := i.domain.ListOrder(ctx, req.GetOrderId())
+	orderInfo, err := l.domain.ListOrder(ctx, req.GetOrderId())
 	if err != nil {
 		return nil, err
 	}

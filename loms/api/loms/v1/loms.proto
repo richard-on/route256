@@ -6,21 +6,32 @@ option go_package="https://gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms;l
 
 import "google/protobuf/empty.proto";
 
+// LOMS (Logistics and Order Management System) handles order management and logistics.
 service LOMS {
+  // CreateOrder creates a new order for a user, reserves ordered products in a warehouse.
   rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  // ListOrder lists order information.
   rpc ListOrder(ListOrderRequest) returns (ListOrderResponse);
-  rpc OrderPayed(OrderPayedRequest) returns (google.protobuf.Empty);
+  // OrderPaid marks order as paid.
+  rpc OrderPaid(OrderPaidRequest) returns (google.protobuf.Empty);
+  // CancelOrder cancels order, makes previously reserved products available.
   rpc CancelOrder(CancelOrderRequest) returns (google.protobuf.Empty);
+  // Stocks returns a number of available products with a given SKU in different warehouses.
   rpc Stocks(StocksRequest) returns (StocksResponse);
 }
 
+// Item represents a product to buy.
 message Item {
+  // SKU is the product's stock keeping unit.
   uint32 sku = 1;
+  // Count is the number of product's with this SKU.
   uint32 count = 2;
 }
 
 message CreateOrderRequest {
+  // User ID.
   int64 user = 1;
+  // Items is the list of all products to buy.
   repeated Item items = 2;
 }
 
@@ -32,22 +43,32 @@ message ListOrderRequest {
   int64 order_id = 1;
 }
 
+// Status is an enumeration that represents a status of order payment.
 enum Status {
+  // Unspecified status.
   STATUS_UNSPECIFIED = 0;
+  // New order.
   STATUS_NEW = 1;
+  // Order awaits payment.
   STATUS_AWAITING_PAYMENT = 2;
+  // Order payment has failed.
   STATUS_FAILED = 3;
-  STATUS_PAYED = 4;
+  // Order is paid successfully.
+  STATUS_PAID = 4;
+  // Order is cancelled.
   STATUS_CANCELLED = 5;
 }
 
 message ListOrderResponse {
+  // Status of the order
   Status status = 1;
+  // User ID.
   int64 user = 2;
+  // Items is the list of all products in user's cart
   repeated Item items = 3;
 }
 
-message OrderPayedRequest {
+message OrderPaidRequest {
   int64 order_id = 1;
 }
 
@@ -56,14 +77,18 @@ message CancelOrderRequest {
 }
 
 message StocksRequest {
+  // Product's SKU (stock keeping unit).
   uint32 sku = 1;
 }
 
+// Stock represents a number of specific product available in a specific warehouse.
 message Stock {
   int64 warehouse_id = 1;
+  // Count is the number of specific product available in this warehouse.
   uint64 count = 2;
 }
 
 message StocksResponse {
+  // A number of specific product available in different warehouses.
   repeated Stock stocks = 1;
 }

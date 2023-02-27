@@ -7,9 +7,10 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func (i *Implementation) AddToCart(ctx context.Context, req *checkout.AddToCartRequest) (*emptypb.Empty, error) {
+// AddToCart adds a product to a user's cart.
+func (c *Checkout) AddToCart(ctx context.Context, req *checkout.AddToCartRequest) (*emptypb.Empty, error) {
 
-	err := i.domain.AddToCart(ctx, req.GetUser(), req.GetSku(), uint16(req.GetCount()))
+	err := c.domain.AddToCart(ctx, req.GetUser(), req.GetSku(), uint16(req.GetCount()))
 	if err != nil {
 		return nil, err
 	}

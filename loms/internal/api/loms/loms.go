@@ -5,13 +5,15 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"
 )
 
-type Implementation struct {
+// LOMS is a wrapper for Logistics and Order Management System gRPC server API.
+type LOMS struct {
 	loms.UnimplementedLOMSServer
 	domain *domain.Domain
 }
 
-func New(domain *domain.Domain) *Implementation {
-	return &Implementation{
+// New creates a new LOMS.
+func New(domain *domain.Domain) *LOMS {
+	return &LOMS{
 		loms.UnimplementedLOMSServer{},
 		domain,
 	}

@@ -24,9 +24,13 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CheckoutClient interface {
+	// AddToCart adds a product to a user's cart.
 	AddToCart(ctx context.Context, in *AddToCartRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// DeleteFromCart deletes a product from a user's cart.
 	DeleteFromCart(ctx context.Context, in *DeleteFromCartRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ListCart lists all products that are currently in a user's cart.
 	ListCart(ctx context.Context, in *ListCartRequest, opts ...grpc.CallOption) (*ListCartResponse, error)
+	// Purchase creates an order containing all products in a user's cart.
 	Purchase(ctx context.Context, in *PurchaseRequest, opts ...grpc.CallOption) (*PurchaseResponse, error)
 }
 
@@ -78,9 +82,13 @@ func (c *checkoutClient) Purchase(ctx context.Context, in *PurchaseRequest, opts
 // All implementations must embed UnimplementedCheckoutServer
 // for forward compatibility
 type CheckoutServer interface {
+	// AddToCart adds a product to a user's cart.
 	AddToCart(context.Context, *AddToCartRequest) (*emptypb.Empty, error)
+	// DeleteFromCart deletes a product from a user's cart.
 	DeleteFromCart(context.Context, *DeleteFromCartRequest) (*emptypb.Empty, error)
+	// ListCart lists all products that are currently in a user's cart.
 	ListCart(context.Context, *ListCartRequest) (*ListCartResponse, error)
+	// Purchase creates an order containing all products in a user's cart.
 	Purchase(context.Context, *PurchaseRequest) (*PurchaseResponse, error)
 	mustEmbedUnimplementedCheckoutServer()
 }

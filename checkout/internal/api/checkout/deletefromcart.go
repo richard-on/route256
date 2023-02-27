@@ -7,9 +7,10 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func (i *Implementation) DeleteFromCart(ctx context.Context, req *checkout.DeleteFromCartRequest) (*emptypb.Empty, error) {
+// DeleteFromCart deletes a product from a user's cart.
+func (c *Checkout) DeleteFromCart(ctx context.Context, req *checkout.DeleteFromCartRequest) (*emptypb.Empty, error) {
 
-	err := i.domain.DeleteFromCart(ctx, req.GetUser(), req.GetSku(), uint16(req.GetCount()))
+	err := c.domain.DeleteFromCart(ctx, req.GetUser(), req.GetSku(), uint16(req.GetCount()))
 	if err != nil {
 		return nil, err
 	}

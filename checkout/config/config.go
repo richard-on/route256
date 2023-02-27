@@ -3,7 +3,6 @@ package config
 
 import (
 	"os"
-	"time"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -27,8 +26,7 @@ type Log struct {
 }
 
 type GRPC struct {
-	Port            string        `yaml:"port"`
-	ShutdownTimeout time.Duration `yaml:"shutdownTimeout"`
+	Port string `yaml:"port"`
 }
 
 type LOMS struct {

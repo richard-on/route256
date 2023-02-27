@@ -7,7 +7,8 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"
 )
 
-func (i *Implementation) CreateOrder(ctx context.Context, req *loms.CreateOrderRequest) (*loms.CreateOrderResponse, error) {
+// CreateOrder creates a new order for a user, reserves ordered products in a warehouse.
+func (l *LOMS) CreateOrder(ctx context.Context, req *loms.CreateOrderRequest) (*loms.CreateOrderResponse, error) {
 
 	itemDomain := make([]domain.Item, 0, len(req.Items))
 	for _, item := range req.Items {
@@ -17,7 +18,7 @@ func (i *Implementation) CreateOrder(ctx context.Context, req *loms.CreateOrderR
 		})
 	}
 
-	id, err := i.domain.CreateOrder(ctx, req.GetUser(), itemDomain)
+	id, err := l.domain.CreateOrder(ctx, req.GetUser(), itemDomain)
 	if err != nil {
 		return nil, err
 	}

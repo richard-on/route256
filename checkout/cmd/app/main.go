@@ -1,4 +1,4 @@
-// Checkout service is responsible for cart and order creation.
+// Checkout service handles cart operations and order creation.
 package main
 
 import (
@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	Version string // Version of this app
-	Build   string // Build date and time
+	Version string // Version of this app.
+	Build   string // Build date and time.
 )
 
 func main() {

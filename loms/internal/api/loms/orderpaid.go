@@ -7,9 +7,10 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func (i *Implementation) OrderPayed(ctx context.Context, req *loms.OrderPayedRequest) (*emptypb.Empty, error) {
+// OrderPaid marks order as paid.
+func (l *LOMS) OrderPaid(ctx context.Context, req *loms.OrderPaidRequest) (*emptypb.Empty, error) {
 
-	err := i.domain.OrderPayed(ctx, req.GetOrderId())
+	err := l.domain.OrderPaid(ctx, req.GetOrderId())
 	if err != nil {
 		return nil, err
 	}

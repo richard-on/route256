@@ -6,9 +6,10 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
 )
 
-func (i *Implementation) Purchase(ctx context.Context, req *checkout.PurchaseRequest) (*checkout.PurchaseResponse, error) {
+// Purchase creates an order containing all products in a user's cart.
+func (c *Checkout) Purchase(ctx context.Context, req *checkout.PurchaseRequest) (*checkout.PurchaseResponse, error) {
 
-	orderInfo, err := i.domain.CreateOrder(ctx, req.GetUser())
+	orderInfo, err := c.domain.CreateOrder(ctx, req.GetUser())
 	if err != nil {
 		return nil, err
 	}

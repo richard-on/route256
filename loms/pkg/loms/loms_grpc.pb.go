@@ -24,10 +24,15 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LOMSClient interface {
+	// CreateOrder creates a new order for a user, reserves ordered products in a warehouse.
 	CreateOrder(ctx context.Context, in *CreateOrderRequest, opts ...grpc.CallOption) (*CreateOrderResponse, error)
+	// ListOrder lists order information.
 	ListOrder(ctx context.Context, in *ListOrderRequest, opts ...grpc.CallOption) (*ListOrderResponse, error)
-	OrderPayed(ctx context.Context, in *OrderPayedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// OrderPaid marks order as paid.
+	OrderPaid(ctx context.Context, in *OrderPaidRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// CancelOrder cancels order, makes previously reserved products available.
 	CancelOrder(ctx context.Context, in *CancelOrderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Stocks returns a number of available products with a given SKU in different warehouses.
 	Stocks(ctx context.Context, in *StocksRequest, opts ...grpc.CallOption) (*StocksResponse, error)
 }
 
@@ -57,9 +62,9 @@ func (c *lOMSClient) ListOrder(ctx context.Context, in *ListOrderRequest, opts .
 	return out, nil
 }
 
-func (c *lOMSClient) OrderPayed(ctx context.Context, in *OrderPayedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *lOMSClient) OrderPaid(ctx context.Context, in *OrderPaidRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/loms.LOMS/OrderPayed", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/loms.LOMS/OrderPaid", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -88,10 +93,15 @@ func (c *lOMSClient) Stocks(ctx context.Context, in *StocksRequest, opts ...grpc
 // All implementations must embed UnimplementedLOMSServer
 // for forward compatibility
 type LOMSServer interface {
+	// CreateOrder creates a new order for a user, reserves ordered products in a warehouse.
 	CreateOrder(context.Context, *CreateOrderRequest) (*CreateOrderResponse, error)
+	// ListOrder lists order information.
 	ListOrder(context.Context, *ListOrderRequest) (*ListOrderResponse, error)
-	OrderPayed(context.Context, *OrderPayedRequest) (*emptypb.Empty, error)
+	// OrderPaid marks order as paid.
+	OrderPaid(context.Context, *OrderPaidRequest) (*emptypb.Empty, error)
+	// CancelOrder cancels order, makes previously reserved products available.
 	CancelOrder(context.Context, *CancelOrderRequest) (*emptypb.Empty, error)
+	// Stocks returns a number of available products with a given SKU in different warehouses.
 	Stocks(context.Context, *StocksRequest) (*StocksResponse, error)
 	mustEmbedUnimplementedLOMSServer()
 }
@@ -106,8 +116,8 @@ func (UnimplementedLOMSServer) CreateOrder(context.Context, *CreateOrderRequest)
 func (UnimplementedLOMSServer) ListOrder(context.Context, *ListOrderRequest) (*ListOrderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListOrder not implemented")
 }
-func (UnimplementedLOMSServer) OrderPayed(context.Context, *OrderPayedRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method OrderPayed not implemented")
+func (UnimplementedLOMSServer) OrderPaid(context.Context, *OrderPaidRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method OrderPaid not implemented")
 }
 func (UnimplementedLOMSServer) CancelOrder(context.Context, *CancelOrderRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelOrder not implemented")
@@ -164,20 +174,20 @@ func _LOMS_ListOrder_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LOMS_OrderPayed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OrderPayedRequest)
+func _LOMS_OrderPaid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OrderPaidRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LOMSServer).OrderPayed(ctx, in)
+		return srv.(LOMSServer).OrderPaid(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/loms.LOMS/OrderPayed",
+		FullMethod: "/loms.LOMS/OrderPaid",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LOMSServer).OrderPayed(ctx, req.(*OrderPayedRequest))
+		return srv.(LOMSServer).OrderPaid(ctx, req.(*OrderPaidRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -234,8 +244,8 @@ var LOMS_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _LOMS_ListOrder_Handler,
 		},
 		{
-			MethodName: "OrderPayed",
-			Handler:    _LOMS_OrderPayed_Handler,
+			MethodName: "OrderPaid",
+			Handler:    _LOMS_OrderPaid_Handler,
 		},
 		{
 			MethodName: "CancelOrder",

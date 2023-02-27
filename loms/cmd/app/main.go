@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	Version string // Version of this app
-	Build   string // Build date and time
+	Version string // Version of this app.
+	Build   string // Build date and time.
 )
 
 func main() {

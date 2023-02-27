@@ -6,9 +6,10 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"
 )
 
-func (i *Implementation) Stocks(ctx context.Context, req *loms.StocksRequest) (*loms.StocksResponse, error) {
+// Stocks returns a number of available products with a given SKU in different warehouses.
+func (l *LOMS) Stocks(ctx context.Context, req *loms.StocksRequest) (*loms.StocksResponse, error) {
 
-	stocks, err := i.domain.Stocks(ctx, req.GetSku())
+	stocks, err := l.domain.Stocks(ctx, req.GetSku())
 	if err != nil {
 		return nil, err
 	}

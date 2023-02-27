@@ -7,9 +7,10 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func (i *Implementation) CancelOrder(ctx context.Context, req *loms.CancelOrderRequest) (*emptypb.Empty, error) {
+// CancelOrder cancels order, makes previously reserved products available.
+func (l *LOMS) CancelOrder(ctx context.Context, req *loms.CancelOrderRequest) (*emptypb.Empty, error) {
 
-	err := i.domain.CancelOrder(ctx, req.GetOrderId())
+	err := l.domain.CancelOrder(ctx, req.GetOrderId())
 	if err != nil {
 		return nil, err
 	}

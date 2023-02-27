@@ -6,42 +6,62 @@ option go_package="https://gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/ch
 
 import "google/protobuf/empty.proto";
 
+// Checkout service handles cart operations and order creation.
 service Checkout {
+  // AddToCart adds a product to a user's cart.
   rpc AddToCart(AddToCartRequest) returns (google.protobuf.Empty);
+  // DeleteFromCart deletes a product from a user's cart.
   rpc DeleteFromCart(DeleteFromCartRequest) returns (google.protobuf.Empty);
+  // ListCart lists all products that are currently in a user's cart.
   rpc ListCart(ListCartRequest) returns (ListCartResponse);
+  // Purchase creates an order containing all products in a user's cart.
   rpc Purchase(PurchaseRequest) returns (PurchaseResponse);
 }
 
 message AddToCartRequest {
+  // User ID.
   int64 user = 1;
+  // SKU is the product's stock keeping unit.
   uint32 sku = 2;
+  // Count is the number of product's with this SKU to add.
   uint32 count = 3;
 }
 
 message DeleteFromCartRequest {
+  // User ID.
   int64 user = 1;
+  // SKU is the product's stock keeping unit.
   uint32 sku = 2;
+  // Count is the number of product's with this SKU to delete.
   uint32 count = 3;
 }
 
 message ListCartRequest {
+  // User ID.
   int64 user = 1;
 }
 
+// Item represents a product in the cart.
 message Item {
+  // SKU is the product's stock keeping unit.
   uint32 sku = 1;
+  // Count is the number of product's with this SKU in a cart.
   uint32 count = 2;
+  // Name of the product.
   string name = 3;
+  // Price of a single product.
   uint32 price = 4;
 }
 
 message ListCartResponse {
+  // Items is the list of all products in the cart.
   repeated Item items = 1;
+  // Total price for all products in user's cart.
   uint32 total_price = 2;
 }
 
 message PurchaseRequest {
+  // User ID.
   int64 user = 1;
 }
 
