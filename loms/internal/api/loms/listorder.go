@@ -8,6 +8,10 @@ import (
 
 // ListOrder lists order information.
 func (l *LOMS) ListOrder(ctx context.Context, req *loms.ListOrderRequest) (*loms.ListOrderResponse, error) {
+	err := validateOrder(req.GetOrderId())
+	if err != nil {
+		return nil, err
+	}
 
 	orderInfo, err := l.domain.ListOrder(ctx, req.GetOrderId())
 	if err != nil {

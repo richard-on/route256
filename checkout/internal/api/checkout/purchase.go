@@ -8,6 +8,10 @@ import (
 
 // Purchase creates an order containing all products in a user's cart.
 func (c *Checkout) Purchase(ctx context.Context, req *checkout.PurchaseRequest) (*checkout.PurchaseResponse, error) {
+	err := validateUser(req.GetUser())
+	if err != nil {
+		return nil, err
+	}
 
 	orderInfo, err := c.domain.CreateOrder(ctx, req.GetUser())
 	if err != nil {

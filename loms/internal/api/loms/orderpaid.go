@@ -9,8 +9,12 @@ import (
 
 // OrderPaid marks order as paid.
 func (l *LOMS) OrderPaid(ctx context.Context, req *loms.OrderPaidRequest) (*emptypb.Empty, error) {
+	err := validateOrder(req.GetOrderId())
+	if err != nil {
+		return nil, err
+	}
 
-	err := l.domain.OrderPaid(ctx, req.GetOrderId())
+	err = l.domain.OrderPaid(ctx, req.GetOrderId())
 	if err != nil {
 		return nil, err
 	}

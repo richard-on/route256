@@ -8,6 +8,10 @@ import (
 
 // ListCart lists all products that are currently in a user's cart.
 func (c *Checkout) ListCart(ctx context.Context, req *checkout.ListCartRequest) (*checkout.ListCartResponse, error) {
+	err := validateUser(req.GetUser())
+	if err != nil {
+		return nil, err
+	}
 
 	items, totalPrice, err := c.domain.ListCart(ctx, req.GetUser())
 	if err != nil {
