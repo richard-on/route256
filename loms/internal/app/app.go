@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"fmt"
+	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"net"
 	"os"
 	"os/signal"
@@ -18,39 +20,49 @@ import (
 )
 
 func Run(cfg *config.Config) {
-	ctx, cancel := signal.NotifyContext(context.Background(),
-		os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
-	defer cancel()
-
 	log := logger.New(
-		os.Stdout, //zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339},
+		os.Stdout,
 		cfg.Log.Level,
 		cfg.Service.Name,
 	)
-	log.Info().Msg("config and logger init success")
+	log.Info("config and logger init success")
 
 	listener, err := net.Listen("tcp", net.JoinHostPort("", cfg.GRPC.Port))
 	if err != nil {
-		log.Fatal().Err(err).Msg("error while creating listener")
+		log.Fatal(err, "error while creating listener")
 	}
 
-	model := domain.New()
+	grpcLogger := logger.New(
+		os.Stdout,
+		cfg.Log.Level,
+		fmt.Sprintf("%v-grpc", cfg.Service.Name),
+	)
 
-	s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(grpcMiddleware.ChainUnaryServer(
+			logger.UnaryServerInterceptor(grpcLogger),
+		)),
+	)
+
+	model := domain.New()
 
 	reflection.Register(s)
 	loms.RegisterLOMSServer(s, lomsservice.New(model))
 
 	go func() {
 		if err = s.Serve(listener); !errors.Is(err, grpc.ErrServerStopped) {
-			log.Fatal().Err(err).Msg("error while running grpc server")
+			log.Fatal(err, "error while running grpc server")
 		}
 	}()
-	log.Info().Msgf("grpc server listening at %v", listener.Addr())
+	log.Infof("grpc server listening at %v", listener.Addr())
+
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
+	defer cancel()
 
 	<-ctx.Done()
 	cancel()
 
-	log.Info().Msg("shutting down: loms service")
+	log.Info("shutting down: loms service")
 	s.GracefulStop()
 }

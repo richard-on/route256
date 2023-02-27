@@ -7,7 +7,7 @@ import (
 )
 
 // ListSKU calls productService.ListSkus for a given number of skus and returns a slice of actual skus.
-func (c *client) ListSKU(ctx context.Context, startAfterSku, count uint32) ([]uint32, error) {
+func (c *Client) ListSKU(ctx context.Context, startAfterSku, count uint32) ([]uint32, error) {
 	resp, err := c.productClient.ListSkus(ctx, &product.ListSkusRequest{
 		Token:         c.token,
 		StartAfterSku: startAfterSku,

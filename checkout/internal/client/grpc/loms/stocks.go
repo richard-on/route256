@@ -8,7 +8,7 @@ import (
 )
 
 // Stocks calls loms.Stocks to check product availability using LOMS gRPC client.
-func (c *client) Stocks(ctx context.Context, sku uint32) ([]*domain.Stock, error) {
+func (c *Client) Stocks(ctx context.Context, sku uint32) ([]*domain.Stock, error) {
 	resp, err := c.lomsClient.Stocks(ctx, &loms.StocksRequest{Sku: sku})
 	if err != nil {
 		return nil, err

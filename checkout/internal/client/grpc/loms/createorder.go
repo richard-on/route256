@@ -8,7 +8,7 @@ import (
 )
 
 // CreateOrder calls loms.CreateOrder on all items in user's cart using LOMS gRPC client.
-func (c *client) CreateOrder(ctx context.Context, user int64) (domain.OrderInfo, error) {
+func (c *Client) CreateOrder(ctx context.Context, user int64) (domain.OrderInfo, error) {
 	// Example items
 	items := []domain.Item{
 		{

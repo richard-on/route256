@@ -8,7 +8,7 @@ import (
 )
 
 // GetProduct calls productService.GetProduct for a given product and returns domain.ProductInfo.
-func (c *client) GetProduct(ctx context.Context, sku uint32) (domain.ProductInfo, error) {
+func (c *Client) GetProduct(ctx context.Context, sku uint32) (domain.ProductInfo, error) {
 	resp, err := c.productClient.GetProduct(ctx, &product.GetProductRequest{
 		Token: c.token,
 		Sku:   sku,
