@@ -1,16 +1,17 @@
+// LOMS (Logistics and Order Management System) handles order management and logistics.
 package main
 
 import (
-	"route256/loms/config"
-	"route256/loms/internal/app"
 	"runtime"
 
 	"github.com/rs/zerolog/log"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/app"
 )
 
 var (
-	Version string // Version of this app
-	Build   string // Build date and time
+	Version string // Version of this app.
+	Build   string // Build date and time.
 )
 
 func main() {

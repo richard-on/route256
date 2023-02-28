@@ -2,76 +2,84 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
-	"route256/checkout/config"
-	"route256/checkout/internal/client/loms"
-	"route256/checkout/internal/client/productservice"
-	"route256/checkout/internal/domain"
-	"route256/checkout/internal/handler/addtocart"
-	"route256/checkout/internal/handler/deletefromcart"
-	"route256/checkout/internal/handler/listcart"
-	purchasehandler "route256/checkout/internal/handler/purchase"
-	"route256/lib/logger"
-	"route256/lib/server/wrapper"
 	"syscall"
 
+	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
+	checkoutservice "gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/api/checkout"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/client/grpc/loms"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/client/grpc/productservice"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/reflection"
 )
 
 func Run(cfg *config.Config) {
-	ctx, cancel := signal.NotifyContext(context.Background(),
-		os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
-	defer cancel()
-
 	log := logger.New(
-		os.Stdout, //zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339},
+		os.Stdout,
 		cfg.Log.Level,
 		cfg.Service.Name,
 	)
-	log.Info().Msg("config and logger init success")
+	log.Info("config and logger init success")
 
-	lomsClient := loms.New(cfg.LOMS.URL)
-	productClient := productservice.New(
-		cfg.ProductService.URL,
-		cfg.ProductService.Token,
+	lomsConn, err := grpc.Dial(cfg.LOMS.URL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal(err, "error while dialing loms grpc server")
+	}
+	lomsClient := loms.NewClient(lomsConn)
+
+	productConn, err := grpc.Dial(cfg.ProductService.URL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal(err, "error while dialing product service grpc server")
+	}
+	productClient := productservice.NewClient(productConn, cfg.ProductService.Token)
+
+	listener, err := net.Listen("tcp", net.JoinHostPort("", cfg.GRPC.Port))
+	if err != nil {
+		log.Fatal(err, "error while creating listener")
+	}
+
+	grpcLogger := logger.New(
+		os.Stdout,
+		cfg.Log.Level,
+		fmt.Sprintf("%v-grpc", cfg.Service.Name),
+	)
+
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(grpcMiddleware.ChainUnaryServer(
+			logger.UnaryServerInterceptor(grpcLogger),
+		)),
 	)
 
 	model := domain.New(lomsClient, productClient, lomsClient)
 
-	addToCart := addtocart.New(model)
-	deleteFromCart := deletefromcart.New()
-	listCart := listcart.New(model)
-	purchase := purchasehandler.New(model)
-
-	http.Handle("/addToCart", wrapper.New(addToCart.Handle))
-	http.Handle("/deleteFromCart", wrapper.New(deleteFromCart.Handle))
-	http.Handle("/listCart", wrapper.New(listCart.Handle))
-	http.Handle("/purchase", wrapper.New(purchase.Handle))
-
-	httpServer := http.Server{
-		Addr:         net.JoinHostPort("", cfg.HTTP.Port),
-		ReadTimeout:  cfg.HTTP.ReadTimeout,
-		WriteTimeout: cfg.HTTP.WriteTimeout,
-	}
+	reflection.Register(s)
+	checkout.RegisterCheckoutServer(s, checkoutservice.New(model))
 
 	go func() {
-		if err := httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			log.Fatal().Err(err).Msg("error while running http server")
+		if err = s.Serve(listener); !errors.Is(err, grpc.ErrServerStopped) {
+			log.Fatal(err, "error while running grpc server")
 		}
 	}()
+	log.Infof("grpc server listening at %v", listener.Addr())
+
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
+	defer cancel()
 
 	<-ctx.Done()
 	cancel()
 
-	ctx, shutdown := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
-	defer shutdown()
-
-	log.Info().Msg("shutting down: checkout service")
-	err := httpServer.Shutdown(ctx)
-	if err != nil {
-		log.Fatal().Err(err).Msg("cannot shutdown http server")
-	}
+	log.Info("shutting down: checkout service")
+	s.GracefulStop()
 }

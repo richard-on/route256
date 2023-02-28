@@ -1,8 +1,8 @@
 package main
 
 import (
-	"route256/notification/config"
-	"route256/notification/internal/app"
+	"gitlab.ozon.dev/rragusskiy/homework-1/notification/config"
+	"gitlab.ozon.dev/rragusskiy/homework-1/notification/internal/app"
 	"runtime"
 
 	"github.com/rs/zerolog/log"

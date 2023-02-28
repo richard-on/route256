@@ -1,20 +1,20 @@
 package app
 
 import (
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
+	"gitlab.ozon.dev/rragusskiy/homework-1/notification/config"
 	"os"
-	"route256/lib/logger"
-	"route256/notification/config"
 )
 
 func Run(cfg *config.Config) {
 	log := logger.New(
-		os.Stdout, //zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339},
+		os.Stdout,
 		cfg.Log.Level,
 		cfg.Service.Name,
 	)
-	log.Info().Msg("config and logger init success")
+	log.Info("config and logger init success")
 
-	// Add services
+	// Blank service
 
-	log.Info().Msg("shutting down: notification service")
+	log.Info("shutting down: notification service")
 }
