@@ -1,11 +1,11 @@
 package main
 
 import (
-	"gitlab.ozon.dev/rragusskiy/homework-1/notification/config"
-	"gitlab.ozon.dev/rragusskiy/homework-1/notification/internal/app"
 	"runtime"
 
 	"github.com/rs/zerolog/log"
+	"gitlab.ozon.dev/rragusskiy/homework-1/notification/config"
+	"gitlab.ozon.dev/rragusskiy/homework-1/notification/internal/app"
 )
 
 var (

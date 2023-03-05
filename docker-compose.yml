@@ -1,17 +1,118 @@
 version: "3.9"
+
 services:
+  # PostgreSQL instance for checkout service
+  postgres-checkout:
+    image: postgres:15.1
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=checkout
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=pgpswd
+      - PGDATA=/var/lib/postgresql/data/checkout_data/
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql.conf"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d checkout" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - ./checkout/config/postgres/postgresql.conf:/etc/postgresql.conf
+      - ./checkout/config/postgres/pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
+      - checkout_data:/var/lib/postgresql/data/checkout_data/
+
+  # Odyssey instance for checkout service
+  odyssey-checkout:
+    depends_on:
+      - postgres-checkout
+    image: richardhere/odyssey:latest
+    environment:
+      CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
+    ports:
+      - "6422:6422"
+    volumes:
+      - ./checkout/config/odyssey/odyssey.conf:/etc/odyssey/odyssey.conf
+      - ./odyssey/:/odyssey
+
+  # Checkout service app
   checkout:
     image: checkout
     build: ./checkout/
     ports:
-      - "50500:50500"
+      - "30000:30000"
+
+  # PostgreSQL instance for LOMS service
+  postgres-loms:
+    image: postgres:15.1
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=loms
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=pgpswd
+      - PGDATA=/var/lib/postgresql/data/loms_data/
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql.conf"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin -d loms" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - ./loms/config/postgres/postgresql.conf:/etc/postgresql.conf
+      - ./loms/config/postgres/pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
+      - loms_data:/var/lib/postgresql/data/loms_data/
+
+  # Odyssey instance for checkout service
+  odyssey-loms:
+    depends_on:
+      - postgres-loms
+    image: richardhere/odyssey:latest
+    environment:
+      CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
+    ports:
+      - "6442:6442"
+    volumes:
+      - ./loms/config/odyssey/odyssey.conf:/etc/odyssey/odyssey.conf
+      - ./odyssey/:/odyssey
+
+  # pgBouncer instance for LOMS service
+#  pgbouncer:
+#    image: edoburu/pgbouncer
+#    environment:
+#      - DB_USER=admin
+#      - DB_PASSWORD=pgpswd
+#      - DB_HOST=postgres-loms
+#      - DB_NAME=loms
+#      - POOL_MODE=transaction
+#      - ADMIN_USERS=admin
+#    ports:
+#      - "5442:5432"
+
+  # LOMS service app
   loms:
     image: loms
     build: ./loms/
     ports:
-      - "50501:50501"
+      - "35000:35000"
+
+  # Notification service app
   notification:
     image: notification
     build: ./notification
     ports:
-      - "50502:50502"
+      - "40000:40000"
+
+volumes:
+  checkout_data:
+    driver:
+      local
+  loms_data:
+    driver:
+      local
