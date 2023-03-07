@@ -20,7 +20,7 @@ func main() {
 		log.Fatal().Err(err).Msg("config load fail")
 	}
 
-	log.Info().Msgf("checkout service: version=%v, build=%v, go version=%v",
+	log.Info().Msgf("loms service: version=%v, build=%v, go version=%v",
 		Version, Build, runtime.Version())
 
 	app.Run(cfg)

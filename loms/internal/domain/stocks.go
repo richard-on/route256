@@ -12,15 +12,11 @@ type Stock struct {
 
 // Stocks returns a number of available products with a given SKU in different warehouses.
 func (d *Domain) Stocks(ctx context.Context, sku uint32) ([]Stock, error) {
-	// Blank business logic
-	return []Stock{
-		{
-			WarehouseID: 1,
-			Count:       3,
-		},
-		{
-			WarehouseID: 2,
-			Count:       5,
-		},
-	}, nil
+
+	stocks, err := d.Repository.GetStocks(ctx, sku)
+	if err != nil {
+		return nil, err
+	}
+
+	return stocks, nil
 }

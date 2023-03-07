@@ -23,25 +23,19 @@ type OrderInfo struct {
 	Status Status
 	// User
 	User int64
-	// Items is the slice of all Item's in user's cart
+	// Items is the slice of all Items in the order.
 	Items []Item
+
+	//Reserve []Reserve
 }
 
 // ListOrder lists OrderInfo for a given orderID.
 func (d *Domain) ListOrder(ctx context.Context, orderID int64) (OrderInfo, error) {
-	// Blank business logic
-	return OrderInfo{
-		Status: AwaitingPayment,
-		User:   111111,
-		Items: []Item{
-			{
-				SKU:   111111,
-				Count: 5,
-			},
-			{
-				SKU:   333333,
-				Count: 12,
-			},
-		},
-	}, nil
+
+	orderInfo, err := d.Repository.ListOrder(ctx, orderID)
+	if err != nil {
+		return OrderInfo{}, err
+	}
+
+	return orderInfo, nil
 }

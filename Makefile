@@ -8,6 +8,6 @@ run-all: build-all
 	docker compose up --force-recreate --build
 
 precommit:
-	cd checkout && make precommit
-	cd loms && make precommit
-	cd notification && make precommit
+	cd checkout && go mod tidy && make precommit
+	cd loms && go mod tidy && make precommit
+	cd notification && go mod tidy && make precommit

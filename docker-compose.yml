@@ -27,6 +27,7 @@ services:
 
   # Odyssey instance for checkout service
   odyssey-checkout:
+    restart: unless-stopped
     depends_on:
       - postgres-checkout
     image: richardhere/odyssey:latest
@@ -71,6 +72,7 @@ services:
 
   # Odyssey instance for checkout service
   odyssey-loms:
+    restart: unless-stopped
     depends_on:
       - postgres-loms
     image: richardhere/odyssey:latest

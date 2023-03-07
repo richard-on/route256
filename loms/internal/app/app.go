@@ -3,6 +3,9 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/transactor"
 	"net"
 	"os"
 	"os/signal"
@@ -44,7 +47,20 @@ func Run(cfg *config.Config) {
 		)),
 	)
 
-	model := domain.New()
+	ctx := context.Background()
+
+	pgConfig, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%v:%v@%v:%v/%v",
+		cfg.Postgres.User, cfg.Postgres.Password, cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.DB))
+	pgConfig.AfterConnect = repository.LoadCustomTypes
+	pool, err := pgxpool.ConnectConfig(ctx, pgConfig)
+	if err != nil {
+		log.Fatal(err, "connecting to database")
+	}
+
+	tx := transactor.New(pool)
+	repo := repository.New(tx, tx)
+
+	model := domain.New(repo, tx)
 
 	reflection.Register(s)
 	loms.RegisterLOMSServer(s, lomsservice.New(model))
