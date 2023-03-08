@@ -2,15 +2,15 @@ package repository
 
 import (
 	"context"
+	"time"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
-	"github.com/pkg/errors"
-	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/convert"
-	"time"
 )
 
-func (r *Repository) InsertOrderInfo(ctx context.Context, order domain.OrderInfo) (int64, error) {
+func (r *Repository) InsertOrderInfo(ctx context.Context, order model.Order) (int64, error) {
 	db := r.QueryEngineProvider.GetQueryEngine(ctx)
 
 	statement := sq.Insert("orders").
@@ -32,14 +32,14 @@ func (r *Repository) InsertOrderInfo(ctx context.Context, order domain.OrderInfo
 	return orderID, nil
 }
 
-func (r *Repository) InsertOrderItems(ctx context.Context, orderID int64, domainItems []domain.Item) error {
+func (r *Repository) InsertOrderItems(ctx context.Context, orderID int64, items []model.Item) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 
-	items := convert.ToSchemaItemArray(domainItems)
+	schemaItems := convert.ToSchemaItemSlice(items)
 
 	statement := sq.Insert("order_items").
 		Columns("order_id", "sku", "count")
-	for _, item := range items {
+	for _, item := range schemaItems {
 		statement = statement.Values(orderID, item.SKU, item.Count)
 	}
 	statement = statement.PlaceholderFormat(sq.Dollar)
@@ -54,140 +54,4 @@ func (r *Repository) InsertOrderItems(ctx context.Context, orderID int64, domain
 	}
 
 	return nil
-}
-
-func (r *Repository) ChangeOrderStatus(ctx context.Context, orderID int64, status domain.Status) error {
-	db := r.ExecEngineProvider.GetExecEngine(ctx)
-
-	statement := sq.Update("orders").
-		Set("status", status).
-		Where(sq.Eq{"order_id": orderID}).
-		PlaceholderFormat(sq.Dollar)
-
-	raw, args, err := statement.ToSql()
-	if err != nil {
-		return err
-	}
-
-	exec, err := db.Exec(ctx, raw, args...)
-	if err != nil {
-		return err
-	}
-	if exec.RowsAffected() == 0 {
-		return errors.New("order does not exist")
-	}
-
-	return nil
-}
-
-func (r *Repository) DecreaseStock(ctx context.Context, sku int64, stock domain.Stock) error {
-	db := r.ExecEngineProvider.GetExecEngine(ctx)
-
-	statement := sq.Update("stocks").
-		Set("count", sq.Expr("count - ?", stock.Count)).
-		Where(sq.Eq{"sku": sku}).
-		Where(sq.Eq{"warehouse_id": stock.WarehouseID}).
-		Where(sq.Gt{"count": 0}).
-		PlaceholderFormat(sq.Dollar)
-
-	raw, args, err := statement.ToSql()
-	if err != nil {
-		return err
-	}
-
-	exec, err := db.Exec(ctx, raw, args...)
-	if err != nil {
-		return err
-	}
-	if exec.RowsAffected() == 0 {
-		return errors.New("warehouse or sku does not exist")
-	}
-
-	return nil
-}
-
-func (r *Repository) IncreaseStock(ctx context.Context, sku int64, stock domain.Stock) error {
-	db := r.ExecEngineProvider.GetExecEngine(ctx)
-
-	statement := sq.Update("stocks").
-		Set("count", sq.Expr("count + ?", stock.Count)).
-		Where(sq.Eq{"sku": sku}).
-		Where(sq.Eq{"warehouse_id": stock.WarehouseID}).
-		PlaceholderFormat(sq.Dollar)
-
-	raw, args, err := statement.ToSql()
-	if err != nil {
-		return err
-	}
-
-	exec, err := db.Exec(ctx, raw, args...)
-	if err != nil {
-		return err
-	}
-	if exec.RowsAffected() == 0 {
-		return errors.New("warehouse or sku does not exist")
-	}
-
-	return nil
-}
-
-func (r *Repository) ReserveItem(ctx context.Context, orderID int64, sku int64, stock domain.Stock) error {
-	db := r.ExecEngineProvider.GetExecEngine(ctx)
-
-	statement := sq.Insert("reserves").
-		Values(orderID, sku, stock.WarehouseID, stock.Count).
-		PlaceholderFormat(sq.Dollar)
-
-	raw, args, err := statement.ToSql()
-	if err != nil {
-		return err
-	}
-
-	exec, err := db.Exec(ctx, raw, args...)
-	if err != nil {
-		return err
-	}
-	if exec.RowsAffected() == 0 {
-		return errors.New("warehouse or sku does not exist")
-	}
-
-	return nil
-}
-
-type Reserve struct {
-	SKU         int64
-	WarehouseID int64
-	Count       int64
-}
-
-func (r *Repository) RemoveItemsFromReserved(ctx context.Context, orderID int64) ([]int64, []domain.Stock, error) {
-	db := r.QueryEngineProvider.GetQueryEngine(ctx)
-
-	statement := sq.Delete("reserves").
-		Where(sq.Eq{"order_id": orderID}).
-		Suffix("RETURNING sku, warehouse_id, count").
-		PlaceholderFormat(sq.Dollar)
-
-	raw, args, err := statement.ToSql()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var reserves []Reserve
-	err = pgxscan.Select(ctx, db, &reserves, raw, args...)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	skus := make([]int64, 0, len(reserves))
-	stocks := make([]domain.Stock, 0, len(reserves))
-	for _, res := range reserves {
-		skus = append(skus, res.SKU)
-		stocks = append(stocks, domain.Stock{
-			WarehouseID: res.WarehouseID,
-			Count:       uint64(res.Count),
-		})
-	}
-
-	return skus, stocks, nil
 }

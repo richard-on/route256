@@ -2,9 +2,10 @@
 package config
 
 import (
+	"os"
+
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
-	"os"
 )
 
 type Config struct {

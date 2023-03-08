@@ -3,40 +3,25 @@ package domain
 import (
 	"context"
 	"fmt"
+
 	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
-// Item represents a product to buy.
-type Item struct {
-	// SKU is the product's stock keeping unit.
-	SKU uint32
-	// Count is the number of product's with this SKU.
-	Count uint16
-}
-
-type Reserve struct {
-	// WarehouseID is the ID of a warehouse where the item is reserved.
-	WarehouseID int64
-	// SKU is the product's stock keeping unit.
-	SKU uint32
-	// Count is the number of product's with this SKU.
-	Count uint16
-}
-
 // CreateOrder creates a new order for a user, reserves ordered products in a warehouse.
-func (d *Domain) CreateOrder(ctx context.Context, user int64, items []Item) (int64, error) {
+func (d *Domain) CreateOrder(ctx context.Context, user int64, items []model.Item) (int64, error) {
 
 	var orderID int64
-	err := d.TransactionManager.RunRepeatableRead(ctx, func(ctxTX context.Context) (err error) {
-		orderID, err = d.Repository.InsertOrderInfo(ctxTX, OrderInfo{
-			Status: NewOrder,
+	err := d.Transactor.RunRepeatableRead(ctx, func(ctxTX context.Context) (err error) {
+		orderID, err = d.LOMSRepo.InsertOrderInfo(ctxTX, model.Order{
+			Status: model.NewOrder,
 			User:   user,
 		})
 		if err != nil {
 			return err
 		}
 
-		err = d.Repository.InsertOrderItems(ctxTX, orderID, items)
+		err = d.LOMSRepo.InsertOrderItems(ctxTX, orderID, items)
 		if err != nil {
 			return err
 		}
@@ -47,10 +32,10 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []Item) (int
 		return 0, err
 	}
 
-	err = d.TransactionManager.RunRepeatableRead(ctx, func(ctxTX context.Context) (err error) {
-		var stocks []Stock
+	err = d.Transactor.RunRepeatableRead(ctx, func(ctxTX context.Context) (err error) {
+		var stocks []model.Stock
 		for _, item := range items {
-			stocks, err = d.Repository.GetStocks(ctxTX, item.SKU)
+			stocks, err = d.LOMSRepo.GetStocks(ctxTX, item.SKU)
 			if err != nil {
 				return err
 			}
@@ -62,11 +47,11 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []Item) (int
 				}
 				toReserve -= stock.Count
 
-				if err = d.Repository.DecreaseStock(ctxTX, int64(item.SKU), stock); err != nil {
+				if err = d.LOMSRepo.DecreaseStock(ctxTX, int64(item.SKU), stock); err != nil {
 					return errors.WithMessagef(err, "counting item with sku %v", item.SKU)
 				}
 
-				if err = d.Repository.ReserveItem(ctxTX, orderID, int64(item.SKU), stock); err != nil {
+				if err = d.LOMSRepo.ReserveItem(ctxTX, orderID, int64(item.SKU), stock); err != nil {
 					return errors.WithMessagef(err, "reserving item with sku %v", item.SKU)
 				}
 
@@ -81,7 +66,7 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []Item) (int
 			}
 		}
 
-		err = d.Repository.ChangeOrderStatus(ctx, orderID, AwaitingPayment)
+		err = d.LOMSRepo.ChangeOrderStatus(ctxTX, orderID, model.AwaitingPayment)
 		if err != nil {
 			return err
 		}
@@ -89,7 +74,7 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []Item) (int
 		return nil
 	})
 	if err != nil {
-		changeErr := d.Repository.ChangeOrderStatus(ctx, orderID, Failed)
+		changeErr := d.LOMSRepo.ChangeOrderStatus(ctx, orderID, model.Failed)
 		if changeErr != nil {
 			return 0, changeErr
 		}

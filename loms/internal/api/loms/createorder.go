@@ -4,7 +4,8 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
-	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/api/loms/convert"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"
 )
 
@@ -15,8 +16,9 @@ func (l *LOMS) CreateOrder(ctx context.Context, req *loms.CreateOrderRequest) (*
 		return nil, err
 	}
 
-	itemDomain := make([]domain.Item, 0, len(req.Items))
+	items := make([]model.Item, 0, len(req.Items))
 	for i, item := range req.Items {
+
 		err = validateSKU(item.GetSku())
 		if err != nil {
 			return nil, errors.WithMessagef(err, "at item with index %d", i)
@@ -27,14 +29,10 @@ func (l *LOMS) CreateOrder(ctx context.Context, req *loms.CreateOrderRequest) (*
 			return nil, errors.WithMessagef(err, "at item with index %d", i)
 		}
 
-		singleItem := domain.Item{
-			SKU:   item.GetSku(),
-			Count: uint16(item.GetCount()),
-		}
-		itemDomain = append(itemDomain, singleItem)
+		items = append(items, convert.ToModelItem(item))
 	}
 
-	id, err := l.domain.CreateOrder(ctx, req.GetUser(), itemDomain)
+	id, err := l.domain.CreateOrder(ctx, req.GetUser(), items)
 	if err != nil {
 		return nil, err
 	}

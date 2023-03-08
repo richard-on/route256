@@ -1,3 +1,4 @@
+// Package repository provides methods for database interaction.
 package repository
 
 import (

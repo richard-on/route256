@@ -1,3 +1,4 @@
+// Package loms provides gRPC API endpoints for Logistics and Order Management System.
 package loms
 
 import (

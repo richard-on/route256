@@ -1,25 +1,48 @@
+// Package domain provides business-logic for Logistics and Order Management System.
 package domain
 
-import "context"
+import (
+	"context"
 
-type TransactionManager interface {
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
+)
+
+// Transactor is the interface that provides abstraction for different transaction isolation levels.
+type Transactor interface {
+
+	// RunReadCommitted runs DB operations provided to it as a transaction with read committed isolation level.
+	//
+	// Note: You should always use ctxTX Context inside transaction block.
+	// Do not use the context passed as the first parameter.
+	RunReadCommitted(ctx context.Context, f func(ctxTX context.Context) error) error
+
+	// RunRepeatableRead runs DB operations provided to it as a transaction with repeatable read isolation level.
+	//
+	// Note: You should always use ctxTX Context inside transaction block.
+	// Do not use the context passed as the first parameter.
 	RunRepeatableRead(ctx context.Context, f func(ctxTX context.Context) error) error
+
+	// RunSerializable runs DB operations provided to it as a transaction with serializable isolation level.
+	//
+	// Note: You should always use ctxTX Context inside transaction block.
+	// Do not use the context passed as the first parameter.
+	RunSerializable(ctx context.Context, f func(ctxTX context.Context) error) error
 }
 
-type Repository interface {
-	InsertOrderInfo(ctx context.Context, order OrderInfo) (int64, error)
-	InsertOrderItems(ctx context.Context, orderID int64, domainItems []Item) error
-	ChangeOrderStatus(ctx context.Context, orderID int64, status Status) error
+// LOMSRepo is the interface that provides methods used in LOMS Repository layer.
+type LOMSRepo interface {
+	InsertOrderInfo(ctx context.Context, order model.Order) (int64, error)
+	InsertOrderItems(ctx context.Context, orderID int64, domainItems []model.Item) error
+	ChangeOrderStatus(ctx context.Context, orderID int64, status model.Status) error
 
-	GetStocks(ctx context.Context, sku uint32) ([]Stock, error)
-	DecreaseStock(ctx context.Context, sku int64, stock Stock) error
-	IncreaseStock(ctx context.Context, sku int64, stock Stock) error
-	ReserveItem(ctx context.Context, orderID int64, sku int64, stock Stock) error
-	//RemoveItemsFromReserved(ctx context.Context, orderID int64) error
-	RemoveItemsFromReserved(ctx context.Context, orderID int64) ([]int64, []Stock, error)
+	GetStocks(ctx context.Context, sku uint32) ([]model.Stock, error)
+	DecreaseStock(ctx context.Context, sku int64, stock model.Stock) error
+	IncreaseStock(ctx context.Context, sku int64, stock model.Stock) error
+	ReserveItem(ctx context.Context, orderID int64, sku int64, stock model.Stock) error
+	RemoveItemsFromReserved(ctx context.Context, orderID int64) ([]int64, []model.Stock, error)
 
-	ListOrderInfo(ctx context.Context, orderID int64) (OrderInfo, error)
-	ListOrderItems(ctx context.Context, orderID int64) ([]Item, error)
+	ListOrderInfo(ctx context.Context, orderID int64) (model.Order, error)
+	ListOrderItems(ctx context.Context, orderID int64) ([]model.Item, error)
 
 	PayOrder(ctx context.Context, orderID int64) error
 	CancelOrder(ctx context.Context, orderID int64) error
@@ -28,14 +51,14 @@ type Repository interface {
 // Domain represents business logic of Logistics and Order Management System.
 // It should wrap interfaces used in a service.
 type Domain struct {
-	Repository
-	TransactionManager
+	LOMSRepo
+	Transactor
 }
 
 // New creates a new Domain.
-func New(repo Repository, txManager TransactionManager) *Domain {
+func New(repo LOMSRepo, tx Transactor) *Domain {
 	return &Domain{
-		Repository:         repo,
-		TransactionManager: txManager,
+		LOMSRepo:   repo,
+		Transactor: tx,
 	}
 }

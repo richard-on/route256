@@ -9,7 +9,7 @@ RPCNAME=loms.proto
 PROTOPATH=api/loms/v1
 RPCPATH=pkg/loms
 BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
-APPVER=0.2.0
+APPVER=0.3.0
 
 all: format build test lint
 

@@ -2,20 +2,21 @@ package repository
 
 import (
 	"context"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/pkg/errors"
-	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
 func (r *Repository) CancelOrder(ctx context.Context, orderID int64) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 
 	statement := sq.Update("orders").
-		Set("status", domain.Cancelled).
+		Set("status", model.Cancelled).
 		Where(sq.Eq{"order_id": orderID}).
 		Where(sq.Or{
-			sq.Eq{"status": domain.AwaitingPayment},
-			sq.Eq{"status": domain.NewOrder},
+			sq.Eq{"status": model.AwaitingPayment},
+			sq.Eq{"status": model.NewOrder},
 		}).
 		PlaceholderFormat(sq.Dollar)
 

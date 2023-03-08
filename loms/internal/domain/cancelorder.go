@@ -5,16 +5,19 @@ import "context"
 // CancelOrder cancels order, makes previously reserved products available.
 func (d *Domain) CancelOrder(ctx context.Context, orderID int64) error {
 
-	err := d.TransactionManager.RunRepeatableRead(ctx, func(ctxTX context.Context) error {
-		err := d.Repository.CancelOrder(ctxTX, orderID)
+	err := d.Transactor.RunRepeatableRead(ctx, func(ctxTX context.Context) error {
+		err := d.LOMSRepo.CancelOrder(ctxTX, orderID)
 		if err != nil {
 			return err
 		}
 
-		skus, stocks, err := d.Repository.RemoveItemsFromReserved(ctxTX, orderID)
+		skus, stocks, err := d.LOMSRepo.RemoveItemsFromReserved(ctxTX, orderID)
+		if err != nil {
+			return err
+		}
 
 		for i, sku := range skus {
-			err = d.Repository.IncreaseStock(ctxTX, sku, stocks[i])
+			err = d.LOMSRepo.IncreaseStock(ctxTX, sku, stocks[i])
 			if err != nil {
 				return err
 			}

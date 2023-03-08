@@ -8,13 +8,12 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
-func (r *Repository) PayOrder(ctx context.Context, orderID int64) error {
+func (r *Repository) ChangeOrderStatus(ctx context.Context, orderID int64, status model.Status) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 
 	statement := sq.Update("orders").
-		Set("status", model.Paid).
+		Set("status", status).
 		Where(sq.Eq{"order_id": orderID}).
-		Where(sq.Eq{"status": model.AwaitingPayment}).
 		PlaceholderFormat(sq.Dollar)
 
 	raw, args, err := statement.ToSql()
@@ -27,7 +26,7 @@ func (r *Repository) PayOrder(ctx context.Context, orderID int64) error {
 		return err
 	}
 	if exec.RowsAffected() == 0 {
-		return errors.New("order does not exist or have already been paid")
+		return errors.New("order does not exist")
 	}
 
 	return nil

@@ -8,13 +8,13 @@ import (
 
 var (
 	// ErrEmptyUser is the error returned when user ID is zero.
-	ErrEmptyUser = errors.New("empty user")
+	ErrEmptyUser = errors.New("empty or zero user")
 	// ErrEmptySKU is the error returned when sku is zero.
-	ErrEmptySKU = errors.New("empty sku")
+	ErrEmptySKU = errors.New("empty or zero sku")
 	// ErrZeroCount is the error returned when count is zero.
 	ErrZeroCount = errors.New("zero count")
 	// ErrEmptyOrder is the error returned when order ID is zero.
-	ErrEmptyOrder = errors.New("empty orderID")
+	ErrEmptyOrder = errors.New("empty or zero orderID")
 	// ErrCountOverflow is the error returned when value is more than max value for uint16.
 	ErrCountOverflow = errors.New("uint16 overflow")
 )

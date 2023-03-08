@@ -2,8 +2,6 @@ package convert
 
 import (
 	"github.com/jackc/pgtype"
-	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
-	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/schema"
 )
 
 func ToSchemaItem(item domain.Item) schema.Item {
