@@ -51,7 +51,7 @@ func Run(cfg *config.Config) {
 
 	pgConfig, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%v:%v@%v:%v/%v",
 		cfg.Postgres.User, cfg.Postgres.Password, cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.DB))
-	pgConfig.AfterConnect = repository.LoadCustomTypes
+	//pgConfig.AfterConnect = repository.LoadCustomTypes
 	pool, err := pgxpool.ConnectConfig(ctx, pgConfig)
 	if err != nil {
 		log.Fatal(err, "connecting to database")

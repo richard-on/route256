@@ -10,11 +10,13 @@ import (
 func (r *Repository) CancelOrder(ctx context.Context, orderID int64) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 
-	statement := sq.Update("\"order\"").
+	statement := sq.Update("orders").
 		Set("status", domain.Cancelled).
 		Where(sq.Eq{"order_id": orderID}).
-		Where(sq.NotEq{"status": domain.Cancelled}).
-		Where(sq.NotEq{"status": domain.Failed}).
+		Where(sq.Or{
+			sq.Eq{"status": domain.AwaitingPayment},
+			sq.Eq{"status": domain.NewOrder},
+		}).
 		PlaceholderFormat(sq.Dollar)
 
 	raw, args, err := statement.ToSql()

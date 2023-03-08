@@ -10,15 +10,12 @@ import (
 	"time"
 )
 
-func (r *Repository) CreateOrder(ctx context.Context, order domain.OrderInfo) (int64, error) {
+func (r *Repository) InsertOrderInfo(ctx context.Context, order domain.OrderInfo) (int64, error) {
 	db := r.QueryEngineProvider.GetQueryEngine(ctx)
 
-	items := convert.ToSchemaItemArray(order.Items)
-
-	statement := sq.Insert("\"order\"").
-		Columns("user_id", "items", "status", "created_at").
-		Values(sq.Expr("$1", order.User), sq.Expr("$2::item[]", items),
-			sq.Expr("$3", order.Status), sq.Expr("$4", time.Now())).
+	statement := sq.Insert("orders").
+		Columns("user_id", "status", "created_at").
+		Values(order.User, order.Status, time.Now()).
 		Suffix("RETURNING order_id").
 		PlaceholderFormat(sq.Dollar)
 
@@ -35,15 +32,34 @@ func (r *Repository) CreateOrder(ctx context.Context, order domain.OrderInfo) (i
 	return orderID, nil
 }
 
-type AvailabilityInfo struct {
-	WarehouseID int64 `db:"warehouse_id"`
-	Available   int32 `db:"available"`
+func (r *Repository) InsertOrderItems(ctx context.Context, orderID int64, domainItems []domain.Item) error {
+	db := r.ExecEngineProvider.GetExecEngine(ctx)
+
+	items := convert.ToSchemaItemArray(domainItems)
+
+	statement := sq.Insert("order_items").
+		Columns("order_id", "sku", "count")
+	for _, item := range items {
+		statement = statement.Values(orderID, item.SKU, item.Count)
+	}
+	statement = statement.PlaceholderFormat(sq.Dollar)
+
+	raw, args, err := statement.ToSql()
+	if err != nil {
+		return err
+	}
+
+	if _, err = db.Exec(ctx, raw, args...); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *Repository) ChangeOrderStatus(ctx context.Context, orderID int64, status domain.Status) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 
-	statement := sq.Update("\"order\"").
+	statement := sq.Update("orders").
 		Set("status", status).
 		Where(sq.Eq{"order_id": orderID}).
 		PlaceholderFormat(sq.Dollar)
@@ -64,82 +80,114 @@ func (r *Repository) ChangeOrderStatus(ctx context.Context, orderID int64, statu
 	return nil
 }
 
-func (r *Repository) CheckAvailability(ctx context.Context, domainItem domain.Item) ([]AvailabilityInfo, error) {
+func (r *Repository) DecreaseStock(ctx context.Context, sku int64, stock domain.Stock) error {
+	db := r.ExecEngineProvider.GetExecEngine(ctx)
+
+	statement := sq.Update("stocks").
+		Set("count", sq.Expr("count - ?", stock.Count)).
+		Where(sq.Eq{"sku": sku}).
+		Where(sq.Eq{"warehouse_id": stock.WarehouseID}).
+		Where(sq.Gt{"count": 0}).
+		PlaceholderFormat(sq.Dollar)
+
+	raw, args, err := statement.ToSql()
+	if err != nil {
+		return err
+	}
+
+	exec, err := db.Exec(ctx, raw, args...)
+	if err != nil {
+		return err
+	}
+	if exec.RowsAffected() == 0 {
+		return errors.New("warehouse or sku does not exist")
+	}
+
+	return nil
+}
+
+func (r *Repository) IncreaseStock(ctx context.Context, sku int64, stock domain.Stock) error {
+	db := r.ExecEngineProvider.GetExecEngine(ctx)
+
+	statement := sq.Update("stocks").
+		Set("count", sq.Expr("count + ?", stock.Count)).
+		Where(sq.Eq{"sku": sku}).
+		Where(sq.Eq{"warehouse_id": stock.WarehouseID}).
+		PlaceholderFormat(sq.Dollar)
+
+	raw, args, err := statement.ToSql()
+	if err != nil {
+		return err
+	}
+
+	exec, err := db.Exec(ctx, raw, args...)
+	if err != nil {
+		return err
+	}
+	if exec.RowsAffected() == 0 {
+		return errors.New("warehouse or sku does not exist")
+	}
+
+	return nil
+}
+
+func (r *Repository) ReserveItem(ctx context.Context, orderID int64, sku int64, stock domain.Stock) error {
+	db := r.ExecEngineProvider.GetExecEngine(ctx)
+
+	statement := sq.Insert("reserves").
+		Values(orderID, sku, stock.WarehouseID, stock.Count).
+		PlaceholderFormat(sq.Dollar)
+
+	raw, args, err := statement.ToSql()
+	if err != nil {
+		return err
+	}
+
+	exec, err := db.Exec(ctx, raw, args...)
+	if err != nil {
+		return err
+	}
+	if exec.RowsAffected() == 0 {
+		return errors.New("warehouse or sku does not exist")
+	}
+
+	return nil
+}
+
+type Reserve struct {
+	SKU         int64
+	WarehouseID int64
+	Count       int64
+}
+
+func (r *Repository) RemoveItemsFromReserved(ctx context.Context, orderID int64) ([]int64, []domain.Stock, error) {
 	db := r.QueryEngineProvider.GetQueryEngine(ctx)
 
-	item := convert.ToSchemaItem(domainItem)
-
-	statement := sq.Select("warehouse_id", "count - reserved AS available").
-		From("stocks").
-		Where(sq.Eq{"sku": item.SKU}).
-		Where(
-			sq.Expr("? >= ?",
-				sq.Select("SUM(?)").
-					From("stocks").
-					Where(sq.Eq{"sku": item.SKU}),
-				item.Count,
-			),
-		)
-
-	raw, args, err := statement.ToSql()
-	if err != nil {
-		return nil, err
-	}
-
-	var availabilityInfo []AvailabilityInfo
-	if err = pgxscan.Get(ctx, db, &availabilityInfo, raw, args...); err != nil {
-		return nil, err
-	}
-
-	return availabilityInfo, nil
-}
-
-func (r *Repository) DecreaseCount(ctx context.Context, warehouseID int64, sku uint32, count uint64) error {
-	db := r.ExecEngineProvider.GetExecEngine(ctx)
-
-	statement := sq.Update("stocks").
-		Set("count", sq.Expr("count - ?", count)).
-		Where(sq.Eq{"warehouse_id": warehouseID}).
-		Where(sq.Eq{"sku": sku}).
+	statement := sq.Delete("reserves").
+		Where(sq.Eq{"order_id": orderID}).
+		Suffix("RETURNING sku, warehouse_id, count").
 		PlaceholderFormat(sq.Dollar)
 
 	raw, args, err := statement.ToSql()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	exec, err := db.Exec(ctx, raw, args...)
+	var reserves []Reserve
+	err = pgxscan.Select(ctx, db, &reserves, raw, args...)
 	if err != nil {
-		return err
-	}
-	if exec.RowsAffected() == 0 {
-		return errors.New("warehouse or sku does not exist")
+		return nil, nil, err
 	}
 
-	return nil
-}
-
-func (r *Repository) ReserveItem(ctx context.Context, warehouseID int64, sku uint32, reserveAmount uint64) error {
-	db := r.ExecEngineProvider.GetExecEngine(ctx)
-
-	statement := sq.Update("stocks").
-		Set("reserved", reserveAmount).
-		Where(sq.Eq{"warehouse_id": warehouseID}).
-		Where(sq.Eq{"sku": sku}).
-		PlaceholderFormat(sq.Dollar)
-
-	raw, args, err := statement.ToSql()
-	if err != nil {
-		return err
+	skus := make([]int64, 0, len(reserves))
+	stocks := make([]domain.Stock, 0, len(reserves))
+	for _, res := range reserves {
+		skus = append(skus, res.SKU)
+		stocks = append(stocks, domain.Stock{
+			WarehouseID: res.WarehouseID,
+			Count:       uint64(res.Count),
+		})
 	}
 
-	exec, err := db.Exec(ctx, raw, args...)
-	if err != nil {
-		return err
-	}
-	if exec.RowsAffected() == 0 {
-		return errors.New("warehouse or sku does not exist")
-	}
-
-	return nil
+	return skus, stocks, nil
 }

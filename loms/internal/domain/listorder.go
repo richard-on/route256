@@ -25,14 +25,26 @@ type OrderInfo struct {
 	User int64
 	// Items is the slice of all Items in the order.
 	Items []Item
-
-	//Reserve []Reserve
 }
 
 // ListOrder lists OrderInfo for a given orderID.
 func (d *Domain) ListOrder(ctx context.Context, orderID int64) (OrderInfo, error) {
 
-	orderInfo, err := d.Repository.ListOrder(ctx, orderID)
+	var orderInfo OrderInfo
+	err := d.TransactionManager.RunRepeatableRead(ctx, func(ctxTX context.Context) (err error) {
+
+		orderInfo, err = d.Repository.ListOrderInfo(ctxTX, orderID)
+		if err != nil {
+			return err
+		}
+
+		orderInfo.Items, err = d.Repository.ListOrderItems(ctxTX, orderID)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
 	if err != nil {
 		return OrderInfo{}, err
 	}

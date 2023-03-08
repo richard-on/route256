@@ -1,7 +1,6 @@
 package convert
 
 import (
-	"github.com/jackc/pgtype"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/schema"
 )
@@ -20,22 +19,18 @@ func ToDomainItem(item schema.Item) domain.Item {
 	}
 }
 
-func ToSchemaItemArray(items []domain.Item) schema.ItemArray {
+func ToSchemaItemArray(items []domain.Item) []schema.Item {
 	dbItems := make([]schema.Item, 0, len(items))
 	for _, item := range items {
 		dbItems = append(dbItems, ToSchemaItem(item))
 	}
 
-	return schema.ItemArray{
-		Elements:   dbItems,
-		Dimensions: []pgtype.ArrayDimension{{Length: int32(len(dbItems)), LowerBound: 1}},
-		Status:     pgtype.Present,
-	}
+	return dbItems
 }
 
-func ToDomainItems(items schema.ItemArray) []domain.Item {
-	domainItems := make([]domain.Item, 0, len(items.Elements))
-	for _, item := range items.Elements {
+func ToDomainItems(items []schema.Item) []domain.Item {
+	domainItems := make([]domain.Item, 0, len(items))
+	for _, item := range items {
 		domainItems = append(domainItems, ToDomainItem(item))
 	}
 
@@ -43,7 +38,10 @@ func ToDomainItems(items schema.ItemArray) []domain.Item {
 }
 
 func ToDomainOrderInfo(orderInfo schema.OrderInfo) domain.OrderInfo {
-	items := ToDomainItems(orderInfo.Items)
+	var items []domain.Item
+	if orderInfo.Items != nil {
+		items = ToDomainItems(orderInfo.Items)
+	}
 
 	return domain.OrderInfo{
 		Status: domain.Status(orderInfo.Status),

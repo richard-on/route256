@@ -10,5 +10,10 @@ func (d *Domain) OrderPaid(ctx context.Context, orderID int64) error {
 		return err
 	}
 
+	_, _, err = d.Repository.RemoveItemsFromReserved(ctx, orderID)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

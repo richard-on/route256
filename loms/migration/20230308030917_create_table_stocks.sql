@@ -1,16 +1,15 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE IF NOT EXISTS "stocks"
+CREATE TABLE IF NOT EXISTS stocks
 (
+    sku          BIGINT NOT NULL,
     warehouse_id BIGINT NOT NULL,
-    sku          INT    NOT NULL,
     count        INT    NOT NULL,
-    reserved     INT    NOT NULL DEFAULT 0,
-    PRIMARY KEY (warehouse_id, sku)
+    PRIMARY KEY (sku, warehouse_id)
 );
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS "stocks";
+DROP TABLE IF EXISTS stocks;
 -- +goose StatementEnd

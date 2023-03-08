@@ -1,13 +1,9 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TYPE "item" AS
-(
-    sku   BIGINT,
-    count INT
-);
+CREATE INDEX IF NOT EXISTS stocks_sku_idx ON stocks (sku);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TYPE IF EXISTS "item";
+DROP INDEX IF EXISTS stocks_sku_idx;
 -- +goose StatementEnd

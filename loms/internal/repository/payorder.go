@@ -10,7 +10,7 @@ import (
 func (r *Repository) PayOrder(ctx context.Context, orderID int64) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 
-	statement := sq.Update("\"order\"").
+	statement := sq.Update("orders").
 		Set("status", domain.Paid).
 		Where(sq.Eq{"order_id": orderID}).
 		Where(sq.Eq{"status": domain.AwaitingPayment}).

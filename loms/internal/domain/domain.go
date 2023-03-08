@@ -7,15 +7,22 @@ type TransactionManager interface {
 }
 
 type Repository interface {
-	CreateOrder(ctx context.Context, order OrderInfo) (int64, error)
+	InsertOrderInfo(ctx context.Context, order OrderInfo) (int64, error)
+	InsertOrderItems(ctx context.Context, orderID int64, domainItems []Item) error
 	ChangeOrderStatus(ctx context.Context, orderID int64, status Status) error
-	ReserveItem(ctx context.Context, warehouseID int64, sku uint32, reserveAmount uint64) error
-	DecreaseCount(ctx context.Context, warehouseID int64, sku uint32, count uint64) error
 
-	ListOrder(ctx context.Context, orderID int64) (OrderInfo, error)
+	GetStocks(ctx context.Context, sku uint32) ([]Stock, error)
+	DecreaseStock(ctx context.Context, sku int64, stock Stock) error
+	IncreaseStock(ctx context.Context, sku int64, stock Stock) error
+	ReserveItem(ctx context.Context, orderID int64, sku int64, stock Stock) error
+	//RemoveItemsFromReserved(ctx context.Context, orderID int64) error
+	RemoveItemsFromReserved(ctx context.Context, orderID int64) ([]int64, []Stock, error)
+
+	ListOrderInfo(ctx context.Context, orderID int64) (OrderInfo, error)
+	ListOrderItems(ctx context.Context, orderID int64) ([]Item, error)
+
 	PayOrder(ctx context.Context, orderID int64) error
 	CancelOrder(ctx context.Context, orderID int64) error
-	GetStocks(ctx context.Context, sku uint32) ([]Stock, error)
 }
 
 // Domain represents business logic of Logistics and Order Management System.

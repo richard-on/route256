@@ -15,6 +15,7 @@ func (r *Repository) GetStocks(ctx context.Context, sku uint32) ([]domain.Stock,
 	query := sq.Select("warehouse_id", "count").
 		From("stocks").
 		Where(sq.Eq{"sku": sku}).
+		Where(sq.Gt{"count": 0}).
 		PlaceholderFormat(sq.Dollar)
 
 	raw, args, err := query.ToSql()

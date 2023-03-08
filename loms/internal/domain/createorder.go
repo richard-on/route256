@@ -23,69 +23,61 @@ type Reserve struct {
 	Count uint16
 }
 
-func (d *Domain) checkAvailable(stocks []Stock, need int64) error {
-	for _, s := range stocks {
-		need -= int64(s.Count)
-		if need <= 0 {
-			return nil
-		}
-	}
-
-	return errors.New("not enough in stock")
-}
-
 // CreateOrder creates a new order for a user, reserves ordered products in a warehouse.
 func (d *Domain) CreateOrder(ctx context.Context, user int64, items []Item) (int64, error) {
 
 	var orderID int64
-	orderID, err := d.Repository.CreateOrder(ctx, OrderInfo{
-		Status: NewOrder,
-		User:   user,
-		Items:  items,
+	err := d.TransactionManager.RunRepeatableRead(ctx, func(ctxTX context.Context) (err error) {
+		orderID, err = d.Repository.InsertOrderInfo(ctxTX, OrderInfo{
+			Status: NewOrder,
+			User:   user,
+		})
+		if err != nil {
+			return err
+		}
+
+		err = d.Repository.InsertOrderItems(ctxTX, orderID, items)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	})
 	if err != nil {
 		return 0, err
 	}
 
 	err = d.TransactionManager.RunRepeatableRead(ctx, func(ctxTX context.Context) (err error) {
-		stocks := make([][]Stock, len(items))
-		for i, item := range items {
-			stocks[i], err = d.Repository.GetStocks(ctx, item.SKU)
+		var stocks []Stock
+		for _, item := range items {
+			stocks, err = d.Repository.GetStocks(ctxTX, item.SKU)
 			if err != nil {
 				return err
 			}
-			if err = d.checkAvailable(stocks[i], int64(item.Count)); err != nil {
-				changeErr := d.Repository.ChangeOrderStatus(ctx, orderID, Failed)
-				if changeErr != nil {
-					return changeErr
-				}
 
-				return fmt.Errorf("order %v: sku %v: request %v items: %w", orderID, item.SKU, item.Count, err)
-			}
-		}
-
-		var reserveAmount uint64 = 0
-		for i, item := range items {
 			toReserve := uint64(item.Count)
-			for _, stock := range stocks[i] {
-				if toReserve >= stock.Count {
-					reserveAmount = stock.Count
-				} else {
-					reserveAmount = toReserve
+			for _, stock := range stocks {
+				if toReserve < stock.Count {
+					stock.Count = toReserve
 				}
-				toReserve -= reserveAmount
+				toReserve -= stock.Count
 
-				if err = d.Repository.DecreaseCount(ctx, stock.WarehouseID, item.SKU, reserveAmount); err != nil {
+				if err = d.Repository.DecreaseStock(ctxTX, int64(item.SKU), stock); err != nil {
 					return errors.WithMessagef(err, "counting item with sku %v", item.SKU)
 				}
 
-				if err = d.Repository.ReserveItem(ctx, stock.WarehouseID, item.SKU, reserveAmount); err != nil {
+				if err = d.Repository.ReserveItem(ctxTX, orderID, int64(item.SKU), stock); err != nil {
 					return errors.WithMessagef(err, "reserving item with sku %v", item.SKU)
 				}
 
 				if toReserve == 0 {
 					break
 				}
+			}
+
+			if toReserve > 0 {
+				return fmt.Errorf("order %v: sku %v: request %v items: not enough in stock",
+					orderID, item.SKU, item.Count)
 			}
 		}
 
@@ -97,6 +89,11 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []Item) (int
 		return nil
 	})
 	if err != nil {
+		changeErr := d.Repository.ChangeOrderStatus(ctx, orderID, Failed)
+		if changeErr != nil {
+			return 0, changeErr
+		}
+
 		return 0, err
 	}
 
