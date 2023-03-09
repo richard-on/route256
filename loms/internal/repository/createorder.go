@@ -10,6 +10,7 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/convert"
 )
 
+// InsertOrderInfo inserts order information (excluding ordered items) to a database.
 func (r *Repository) InsertOrderInfo(ctx context.Context, order model.Order) (int64, error) {
 	db := r.QueryEngineProvider.GetQueryEngine(ctx)
 
@@ -32,6 +33,7 @@ func (r *Repository) InsertOrderInfo(ctx context.Context, order model.Order) (in
 	return orderID, nil
 }
 
+// InsertOrderItems inserts ordered items to a database.
 func (r *Repository) InsertOrderItems(ctx context.Context, orderID int64, items []model.Item) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 

@@ -79,3 +79,6 @@ generate:
 	--go-grpc_out=$(RPCPATH) --go-grpc_opt=paths=source_relative \
 	--plugin=protoc-gen-go-grpc=bin/protoc-gen-go-grpc \
 	api/loms/v1/loms.proto
+
+migrate:
+	exec ./migration.sh

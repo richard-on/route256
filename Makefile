@@ -5,7 +5,13 @@ build-all:
 	cd notification && make build
 
 run-all: build-all
-	docker compose up --force-recreate --build
+	docker compose up -d --force-recreate --build
+	cd checkout && exec ./migration.sh
+	cd loms && exec ./migration.sh
+
+migrate:
+	cd checkout && exec ./migration.sh
+	cd loms && exec ./migration.sh
 
 precommit:
 	cd checkout && go mod tidy && make precommit

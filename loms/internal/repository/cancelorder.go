@@ -8,6 +8,7 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
+// CancelOrder sets order status to "cancelled".
 func (r *Repository) CancelOrder(ctx context.Context, orderID int64) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 

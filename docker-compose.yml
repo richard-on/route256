@@ -56,6 +56,9 @@ services:
   checkout:
     image: checkout
     build: ./checkout/
+    depends_on:
+      - postgres-checkout
+      - odyssey-checkout
     ports:
       - "30000:30000"
 
@@ -114,6 +117,9 @@ services:
   loms:
     image: loms
     build: ./loms/
+    depends_on:
+      - postgres-loms
+      - odyssey-loms
     ports:
       - "35000:35000"
 

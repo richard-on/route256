@@ -7,8 +7,10 @@ import (
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/pkg/errors"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/schema"
 )
 
+// ReserveItem inserts item to reserves table.
 func (r *Repository) ReserveItem(ctx context.Context, orderID int64, sku int64, stock model.Stock) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 
@@ -32,12 +34,7 @@ func (r *Repository) ReserveItem(ctx context.Context, orderID int64, sku int64, 
 	return nil
 }
 
-type Reserve struct {
-	SKU         int64
-	WarehouseID int64
-	Count       int64
-}
-
+// RemoveItemsFromReserved removes items from a given order from reserves table.
 func (r *Repository) RemoveItemsFromReserved(ctx context.Context, orderID int64) ([]int64, []model.Stock, error) {
 	db := r.QueryEngineProvider.GetQueryEngine(ctx)
 
@@ -51,7 +48,7 @@ func (r *Repository) RemoveItemsFromReserved(ctx context.Context, orderID int64)
 		return nil, nil, err
 	}
 
-	var reserves []Reserve
+	var reserves []schema.Reserve
 	err = pgxscan.Select(ctx, db, &reserves, raw, args...)
 	if err != nil {
 		return nil, nil, err

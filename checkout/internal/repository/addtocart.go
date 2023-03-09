@@ -8,6 +8,7 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/repository/convert"
 )
 
+// AddToCart adds provided item to user's cart.
 func (r *Repository) AddToCart(ctx context.Context, userID int64, modelItem model.Item) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 

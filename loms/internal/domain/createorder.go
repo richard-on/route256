@@ -12,7 +12,8 @@ import (
 func (d *Domain) CreateOrder(ctx context.Context, user int64, items []model.Item) (int64, error) {
 
 	var orderID int64
-	err := d.Transactor.RunRepeatableRead(ctx, func(ctxTX context.Context) (err error) {
+	// This transaction inserts order info to database. After this step, the order is created.
+	err := d.Transactor.RunReadCommitted(ctx, func(ctxTX context.Context) (err error) {
 		orderID, err = d.LOMSRepo.InsertOrderInfo(ctxTX, model.Order{
 			Status: model.NewOrder,
 			User:   user,
@@ -32,6 +33,8 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []model.Item
 		return 0, err
 	}
 
+	// After order creation, this transaction checks whether we have enough items in stock to fulfill the order.
+	// If it is fine, we pass ordered number of items into reserves.
 	err = d.Transactor.RunRepeatableRead(ctx, func(ctxTX context.Context) (err error) {
 		var stocks []model.Stock
 		for _, item := range items {
@@ -66,6 +69,7 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []model.Item
 			}
 		}
 
+		// If we have successfully reserved items, change order status to "awaiting payment".
 		err = d.LOMSRepo.ChangeOrderStatus(ctxTX, orderID, model.AwaitingPayment)
 		if err != nil {
 			return err
@@ -74,6 +78,7 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []model.Item
 		return nil
 	})
 	if err != nil {
+		// If we were not able to secure items, change order status to "failed".
 		changeErr := d.LOMSRepo.ChangeOrderStatus(ctx, orderID, model.Failed)
 		if changeErr != nil {
 			return 0, changeErr

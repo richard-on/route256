@@ -19,8 +19,13 @@ func (d *Domain) AddToCart(ctx context.Context, user int64, item model.Item) err
 		return errors.WithMessage(err, "checking stock")
 	}
 
+	count, err := d.CheckoutRepo.GetItemCartCount(ctx, user, item)
+	if err != nil && !errors.Is(err, ErrNotInCart) {
+		return err
+	}
+
 	inStock := false
-	counter := int64(item.Count)
+	counter := int64(item.Count) + int64(count)
 	for _, stock := range stocks {
 		counter -= int64(stock.Count)
 		if counter <= 0 {

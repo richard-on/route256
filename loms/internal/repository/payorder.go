@@ -8,6 +8,7 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
+// PayOrder sets order status to "paid".
 func (r *Repository) PayOrder(ctx context.Context, orderID int64) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 

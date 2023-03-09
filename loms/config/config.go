@@ -53,9 +53,8 @@ type NotificationService struct{}
 // New reads and returns app config.
 func New() (*Config, error) {
 	cfg := &Config{}
-	//b, err := exec.Command("cmd", "/C", "dir").Output()
-	//fmt.Println(string(b))
-	rawYAML, err := os.ReadFile("./loms/config/config.yaml")
+
+	rawYAML, err := os.ReadFile("./config/config.yaml")
 	if err != nil {
 		return nil, errors.WithMessage(err, "reading config file")
 	}

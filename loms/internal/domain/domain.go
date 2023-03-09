@@ -33,19 +33,20 @@ type Transactor interface {
 type LOMSRepo interface {
 	InsertOrderInfo(ctx context.Context, order model.Order) (int64, error)
 	InsertOrderItems(ctx context.Context, orderID int64, domainItems []model.Item) error
+
+	ListOrderInfo(ctx context.Context, orderID int64) (model.Order, error)
+	ListOrderItems(ctx context.Context, orderID int64) ([]model.Item, error)
+
+	CancelOrder(ctx context.Context, orderID int64) error
+	PayOrder(ctx context.Context, orderID int64) error
 	ChangeOrderStatus(ctx context.Context, orderID int64, status model.Status) error
 
 	GetStocks(ctx context.Context, sku uint32) ([]model.Stock, error)
 	DecreaseStock(ctx context.Context, sku int64, stock model.Stock) error
 	IncreaseStock(ctx context.Context, sku int64, stock model.Stock) error
+
 	ReserveItem(ctx context.Context, orderID int64, sku int64, stock model.Stock) error
 	RemoveItemsFromReserved(ctx context.Context, orderID int64) ([]int64, []model.Stock, error)
-
-	ListOrderInfo(ctx context.Context, orderID int64) (model.Order, error)
-	ListOrderItems(ctx context.Context, orderID int64) ([]model.Item, error)
-
-	PayOrder(ctx context.Context, orderID int64) error
-	CancelOrder(ctx context.Context, orderID int64) error
 }
 
 // Domain represents business logic of Logistics and Order Management System.

@@ -8,6 +8,7 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
+// ChangeOrderStatus sets order status to a provided model.Status.
 func (r *Repository) ChangeOrderStatus(ctx context.Context, orderID int64, status model.Status) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 

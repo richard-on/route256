@@ -11,6 +11,7 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/schema"
 )
 
+// GetStocks returns a slice of model.Stock, containing availability information for a given item.
 func (r *Repository) GetStocks(ctx context.Context, sku uint32) ([]model.Stock, error) {
 	db := r.QueryEngineProvider.GetQueryEngine(ctx)
 
@@ -33,6 +34,7 @@ func (r *Repository) GetStocks(ctx context.Context, sku uint32) ([]model.Stock, 
 	return convert.ToModelStockSlice(stocks), nil
 }
 
+// IncreaseStock increases stock count for a given item.
 func (r *Repository) IncreaseStock(ctx context.Context, sku int64, stock model.Stock) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 
@@ -58,6 +60,7 @@ func (r *Repository) IncreaseStock(ctx context.Context, sku int64, stock model.S
 	return nil
 }
 
+// DecreaseStock decreases stock count for a given item.
 func (r *Repository) DecreaseStock(ctx context.Context, sku int64, stock model.Stock) error {
 	db := r.ExecEngineProvider.GetExecEngine(ctx)
 
