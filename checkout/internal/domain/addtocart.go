@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/model"
 )
 
 var (
@@ -11,28 +12,31 @@ var (
 	ErrInsufficientStocks = errors.New("insufficient stock")
 )
 
-// Stock represents a number of specific product available in a specific warehouse.
-type Stock struct {
-	// WarehouseID is the ID of a warehouse where the item is stored.
-	WarehouseID int64
-	// Count is the number of specific product available in this warehouse.
-	Count uint64
-}
-
 // AddToCart adds a number of items with given sku to user's cart.
-func (d *Domain) AddToCart(ctx context.Context, user int64, sku uint32, count uint16) error {
-	stocks, err := d.stockChecker.Stocks(ctx, sku)
+func (d *Domain) AddToCart(ctx context.Context, user int64, item model.Item) error {
+	stocks, err := d.StockChecker.Stocks(ctx, item.SKU)
 	if err != nil {
 		return errors.WithMessage(err, "checking stock")
 	}
 
-	counter := int64(count)
+	inStock := false
+	counter := int64(item.Count)
 	for _, stock := range stocks {
 		counter -= int64(stock.Count)
 		if counter <= 0 {
-			return nil
+			inStock = true
+			break
 		}
 	}
 
-	return ErrInsufficientStocks
+	if !inStock {
+		return ErrInsufficientStocks
+	}
+
+	err = d.CheckoutRepo.AddToCart(ctx, user, item)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

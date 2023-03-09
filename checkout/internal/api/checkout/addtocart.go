@@ -3,6 +3,7 @@ package checkout
 import (
 	"context"
 
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -22,7 +23,10 @@ func (c *Checkout) AddToCart(ctx context.Context, req *checkout.AddToCartRequest
 		return nil, err
 	}
 
-	err = c.domain.AddToCart(ctx, req.GetUser(), req.GetSku(), uint16(req.GetCount()))
+	err = c.domain.AddToCart(ctx, req.GetUser(), model.Item{
+		SKU:   req.GetSku(),
+		Count: uint16(req.GetCount()),
+	})
 	if err != nil {
 		return nil, err
 	}

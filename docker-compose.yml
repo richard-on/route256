@@ -39,6 +39,19 @@ services:
       - ./checkout/config/odyssey/odyssey.conf:/etc/odyssey/odyssey.conf
       - ./odyssey/:/odyssey
 
+  # pgBouncer instance for LOMS service
+#  pgbouncer-checkout:
+#    image: edoburu/pgbouncer
+#    environment:
+#      - DB_USER=admin
+#      - DB_PASSWORD=pgpswd
+#      - DB_HOST=postgres-checkout
+#      - DB_NAME=checkout
+#      - POOL_MODE=transaction
+#      - ADMIN_USERS=admin
+#    ports:
+#      - "5422:5432"
+
   # Checkout service app
   checkout:
     image: checkout
@@ -85,7 +98,7 @@ services:
       - ./odyssey/:/odyssey
 
   # pgBouncer instance for LOMS service
-#  pgbouncer:
+#  pgbouncer-loms:
 #    image: edoburu/pgbouncer
 #    environment:
 #      - DB_USER=admin

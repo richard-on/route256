@@ -50,12 +50,14 @@ func Run(cfg *config.Config) {
 		)),
 	)
 
-	ctx := context.Background()
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
+	defer cancel()
 
 	pgConfig, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%v:%v@%v:%v/%v",
 		cfg.Postgres.User, cfg.Postgres.Password, cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.DB))
 	if err != nil {
-		log.Fatal(err, "connecting to database")
+		log.Fatal(err, "parsing database config")
 	}
 
 	pool, err := pgxpool.ConnectConfig(ctx, pgConfig)
@@ -78,10 +80,6 @@ func Run(cfg *config.Config) {
 		}
 	}()
 	log.Infof("grpc server listening at %v", listener.Addr())
-
-	ctx, cancel := signal.NotifyContext(context.Background(),
-		os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
-	defer cancel()
 
 	<-ctx.Done()
 	cancel()

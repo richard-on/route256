@@ -13,13 +13,13 @@ func (c *Checkout) Purchase(ctx context.Context, req *checkout.PurchaseRequest) 
 		return nil, err
 	}
 
-	orderInfo, err := c.domain.CreateOrder(ctx, req.GetUser())
+	orderID, err := c.domain.CreateOrder(ctx, req.GetUser())
 	if err != nil {
 		return nil, err
 	}
 
 	resp := checkout.PurchaseResponse{
-		OrderId: orderInfo.OrderID,
+		OrderId: orderID,
 	}
 
 	return &resp, nil

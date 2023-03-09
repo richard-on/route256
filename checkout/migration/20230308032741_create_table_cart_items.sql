@@ -2,9 +2,10 @@
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS cart_items
 (
-    user_id BIGINT PRIMARY KEY REFERENCES cart (user_id),
+    user_id BIGINT NOT NULL,
     sku     BIGINT NOT NULL,
-    count   INT    NOT NULL
+    count   INT    NOT NULL,
+    PRIMARY KEY (user_id, sku)
 );
 -- +goose StatementEnd
 
