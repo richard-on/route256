@@ -39,9 +39,6 @@ func (d *Domain) AddToCart(ctx context.Context, user int64, item model.Item) err
 	}
 
 	err = d.CheckoutRepo.AddToCart(ctx, user, item)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
