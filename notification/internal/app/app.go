@@ -1,9 +1,10 @@
 package app
 
 import (
+	"os"
+
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
 	"gitlab.ozon.dev/rragusskiy/homework-1/notification/config"
-	"os"
 )
 
 func Run(cfg *config.Config) {

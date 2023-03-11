@@ -4,7 +4,7 @@ GOVER=$(shell go version | perl -nle '/(go\d\S+)/; print $$1;')
 SMARTIMPORTS=${BINDIR}/smartimports_${GOVER}
 LINTVER=v1.51.1
 LINTBIN=${BINDIR}/lint_${GOVER}_${LINTVER}
-PACKAGE=route256/notification/cmd/app
+PACKAGE=gitlab.ozon.dev/rragusskiy/homework-1/notification/cmd/app
 BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
 APPVER=0.0.1
 

@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Service             `yaml:"service"`
 	Log                 `yaml:"log"`
+	Postgres            `yaml:"postgres"`
 	GRPC                `yaml:"grpc"`
 	Checkout            `yaml:"checkout"`
 	ProductService      `yaml:"productService"`
@@ -23,6 +24,15 @@ type Service struct {
 
 type Log struct {
 	Level string `yaml:"logLevel"`
+}
+
+type Postgres struct {
+	Host     string `yaml:"host"`
+	Port     string `yaml:"port"`
+	DB       string `yaml:"db"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	SSLMode  string `yaml:"sslMode"`
 }
 
 type GRPC struct {

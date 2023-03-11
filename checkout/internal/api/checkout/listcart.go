@@ -23,8 +23,8 @@ func (c *Checkout) ListCart(ctx context.Context, req *checkout.ListCartRequest) 
 		itemsResp = append(itemsResp, &checkout.Item{
 			Sku:   item.SKU,
 			Count: uint32(item.Count),
-			Name:  item.Name,
-			Price: item.Price,
+			Name:  item.ProductInfo.Name,
+			Price: item.ProductInfo.Price,
 		})
 	}
 
