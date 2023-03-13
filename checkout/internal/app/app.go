@@ -24,6 +24,8 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/health"
+	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -88,6 +90,7 @@ func Run(cfg *config.Config) {
 
 	model := domain.New(repo, tx, lomsClient, productClient, lomsClient)
 
+	grpchealth.RegisterHealthServer(s, health.NewServer())
 	reflection.Register(s)
 	checkout.RegisterCheckoutServer(s, checkoutservice.New(model))
 

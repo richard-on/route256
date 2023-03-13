@@ -30,7 +30,7 @@ func (d *Domain) DeleteFromCart(ctx context.Context, user int64, item model.Item
 			if err = d.CheckoutRepo.DeleteItemCart(ctxTX, user, item.SKU); err != nil {
 				return err
 			}
-		case int32(item.Count) > count:
+		case count > int32(item.Count):
 			// Otherwise, decrease count for this item
 			if err = d.CheckoutRepo.DecreaseItemCartCount(ctxTX, user, item); err != nil {
 				return err

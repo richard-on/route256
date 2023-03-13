@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: odyssey-checkout
+  namespace: route256
+  labels:
+    name: odyssey-checkout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: odyssey-checkout
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: odyssey-checkout
+    spec:
+      containers:
+        - image: richardhere/odyssey:latest
+          name: odyssey-checkout
+          ports:
+            - containerPort: 6422
+          volumeMounts:
+            - name: config
+              mountPath: "/etc/odyssey/odyssey.conf"
+              subPath: odyssey.conf
+          resources:
+            limits:
+              cpu: 300m
+              memory: 500Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+      volumes:
+        - name: config
+          configMap:
+            name: odyssey-checkout
+      restartPolicy: Always

@@ -9,6 +9,10 @@ run-all: build-all
 	cd checkout && exec ./migration.sh
 	cd loms && exec ./migration.sh
 
+reg-push: precommit build-all
+	cd checkout && make docker-push
+	cd loms && make docker-push
+
 migrate:
 	cd checkout && exec ./migration.sh
 	cd loms && exec ./migration.sh

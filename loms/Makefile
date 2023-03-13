@@ -82,3 +82,13 @@ generate:
 
 migrate:
 	exec ./migration.sh
+
+docker-push:
+	docker tag route256-loms richardhere/route256-loms:latest
+	docker push richardhere/route256-loms
+
+config-file:
+	kubectl create configmap loms -n route256 --from-file=config/config.yaml
+	kubectl create configmap odyssey-loms -n route256 --from-file=config/odyssey/odyssey.conf
+	kubectl create configmap pgconf-loms -n route256 --from-file=config/postgres/postgresql.conf
+	kubectl create configmap pghba-loms -n route256 --from-file=config/postgres/pg_hba.conf

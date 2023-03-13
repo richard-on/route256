@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  namespace: route256
+  labels:
+    name: checkout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: checkout
+    spec:
+      containers:
+        - image: richardhere/route256-checkout:latest
+          livenessProbe:
+            grpc:
+              port: 30000
+            initialDelaySeconds: 10
+            failureThreshold: 3
+            periodSeconds: 5
+            timeoutSeconds: 5
+          name: checkout
+          ports:
+            - containerPort: 30000
+          envFrom:
+            - configMapRef:
+                name: checkout
+          resources:
+            limits:
+              cpu: 300m
+              memory: 100Mi
+            requests:
+              cpu: 100m
+              memory: 30Mi
+      restartPolicy: Always

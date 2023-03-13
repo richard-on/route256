@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: loms
+  namespace: route256
+  labels:
+    app: loms
+spec:
+  ports:
+    - name: "grpc"
+      protocol: TCP
+      port: 35000
+      targetPort: 35000
+  selector:
+    app: loms

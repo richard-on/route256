@@ -1,3 +1,5 @@
 /bin
 /vendor-proto
+/k8s/postgres/configmap.yaml
+
 config/config.yaml

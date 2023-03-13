@@ -1,0 +1,32 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: checkout-pv-volume
+  namespace: route256
+  labels:
+    name: checkout-pv-volume
+    type: local
+    app: postgres-checkout
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/mnt/data/checkout"
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: checkout-pv-claim
+  namespace: route256
+  labels:
+    app: postgres-checkout
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi

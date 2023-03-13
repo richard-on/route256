@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: odyssey-loms
+  namespace: route256
+  labels:
+    name: odyssey-loms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: odyssey-loms
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: odyssey-loms
+    spec:
+      containers:
+        - image: richardhere/odyssey:latest
+          name: odyssey-loms
+          ports:
+            - containerPort: 6442
+          volumeMounts:
+            - name: config
+              mountPath: "/etc/odyssey/odyssey.conf"
+              subPath: odyssey.conf
+          resources:
+            limits:
+              cpu: 300m
+              memory: 500Mi
+            requests:
+              cpu: 100m
+              memory: 100Mi
+      volumes:
+        - name: config
+          configMap:
+            name: odyssey-loms
+      restartPolicy: Always
