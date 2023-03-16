@@ -3,6 +3,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -19,7 +20,8 @@ type Config struct {
 }
 
 type Service struct {
-	Name string `yaml:"name"`
+	Name           string        `yaml:"name"`
+	PaymentTimeout time.Duration `yaml:"paymentTimeout"`
 }
 
 type Log struct {

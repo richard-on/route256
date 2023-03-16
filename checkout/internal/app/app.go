@@ -22,6 +22,7 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/repository/transactor"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
+	"go.uber.org/ratelimit"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
@@ -50,7 +51,7 @@ func Run(cfg *config.Config) {
 	if err != nil {
 		log.Fatal(err, "error while dialing product service grpc server")
 	}
-	productClient := productservice.NewClient(productConn, cfg.ProductService.Token)
+	productClient := productservice.NewClient(productConn, cfg.ProductService.Token, ratelimit.New(10))
 
 	listener, err := net.Listen("tcp", net.JoinHostPort("", cfg.GRPC.Port))
 	if err != nil {
@@ -95,7 +96,8 @@ func Run(cfg *config.Config) {
 	checkout.RegisterCheckoutServer(s, checkoutservice.New(model))
 
 	go func() {
-		if err = s.Serve(listener); !errors.Is(err, grpc.ErrServerStopped) {
+		err = s.Serve(listener)
+		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatal(err, "error while running grpc server")
 		}
 	}()

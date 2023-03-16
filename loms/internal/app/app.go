@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -78,11 +79,31 @@ func Run(cfg *config.Config) {
 	loms.RegisterLOMSServer(s, lomsservice.New(model))
 
 	go func() {
-		if err = s.Serve(listener); !errors.Is(err, grpc.ErrServerStopped) {
+		err = s.Serve(listener)
+		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatal(err, "error while running grpc server")
 		}
 	}()
 	log.Infof("grpc server listening at %v", listener.Addr())
+
+	ticker := time.NewTicker(time.Second * 10)
+	// Start a separate goroutine to check and cancel unpaid orders.
+	go func() {
+		for {
+			select {
+			// Run cancelling on each tick.
+			case <-ticker.C:
+				errSlice := model.CancelUnpaidOrders(ctx, cfg.Service.PaymentTimeout)
+				if len(errSlice) > 0 {
+					for _, cancelErr := range errSlice {
+						log.Error(cancelErr, "cancelling unpaid orders")
+					}
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
 	<-ctx.Done()
 	cancel()

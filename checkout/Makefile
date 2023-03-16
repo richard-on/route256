@@ -9,7 +9,7 @@ RPCNAME=checkout.proto
 PROTOPATH=api/checkout/v1
 RPCPATH=pkg/checkout
 BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
-APPVER=0.3.0
+APPVER=0.4.0
 
 all: format build test lint
 

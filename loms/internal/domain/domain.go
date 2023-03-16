@@ -3,6 +3,7 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
@@ -36,6 +37,7 @@ type LOMSRepo interface {
 
 	ListOrderInfo(ctx context.Context, orderID int64) (model.Order, error)
 	ListOrderItems(ctx context.Context, orderID int64) ([]model.Item, error)
+	ListUnpaidOrders(ctx context.Context, paymentWait time.Duration) ([]int64, error)
 
 	CancelOrder(ctx context.Context, orderID int64) error
 	PayOrder(ctx context.Context, orderID int64) error

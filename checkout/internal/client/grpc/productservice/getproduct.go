@@ -9,6 +9,8 @@ import (
 
 // GetProduct calls productService.GetProduct for a given product and returns domain.ProductInfo.
 func (c *Client) GetProduct(ctx context.Context, sku uint32) (model.ProductInfo, error) {
+	c.rateLimit.Take()
+
 	resp, err := c.productClient.GetProduct(ctx, &product.GetProductRequest{
 		Token: c.token,
 		Sku:   sku,
