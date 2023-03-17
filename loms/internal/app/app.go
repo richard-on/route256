@@ -86,7 +86,7 @@ func Run(cfg *config.Config) {
 	}()
 	log.Infof("grpc server listening at %v", listener.Addr())
 
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(cfg.CancelInterval)
 	// Start a separate goroutine to check and cancel unpaid orders.
 	go func() {
 		for {

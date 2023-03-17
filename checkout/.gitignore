@@ -1,5 +1,6 @@
 /bin
 /vendor-proto
 /k8s/postgres/configmap.yaml
+/internal/client/grpc/kube/.kube
 
 config/config.yaml

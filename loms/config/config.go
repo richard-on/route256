@@ -22,6 +22,7 @@ type Config struct {
 type Service struct {
 	Name           string        `yaml:"name"`
 	PaymentTimeout time.Duration `yaml:"paymentTimeout"`
+	CancelInterval time.Duration `yaml:"cancelInterval"`
 }
 
 type Log struct {
