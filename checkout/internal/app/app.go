@@ -29,8 +29,6 @@ import (
 	"google.golang.org/grpc/health"
 	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 // Run creates and runs the service using provided config.
@@ -62,20 +60,11 @@ func Run(cfg *config.Config) {
 	var productClient *productservice.Client
 	// Execute if app is run inside kubernetes cluster.
 	if cfg.Service.Environment == "kubernetes" {
-		// Create the in-cluster k8s config.
-		kubeConfig, err := rest.InClusterConfig()
-		if err != nil {
-			log.Fatal(err, "error while getting in-cluster config")
-		}
-
-		// Create the clientset.
-		clientset, err := kubernetes.NewForConfig(kubeConfig)
-		if err != nil {
-			log.Fatal(err, "error while creating k8s clientset")
-		}
-
 		// Create a new Kubernetes client.
-		kubeClient := kube.NewClient(clientset, cfg.Kubernetes)
+		kubeClient, err := kube.NewInClusterClient(cfg.Kubernetes)
+		if err != nil {
+			log.Fatal(err, "error while creating kubernetes client")
+		}
 
 		// Create a product service with dynamic rate limit.
 		// Rate limit is changed based on the number of active replicas.

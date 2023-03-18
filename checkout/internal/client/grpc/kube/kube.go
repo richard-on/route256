@@ -2,6 +2,8 @@ package kube
 
 import (
 	"context"
+	"github.com/pkg/errors"
+	"k8s.io/client-go/rest"
 
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,12 +16,32 @@ type Client struct {
 	kubeConfig config.Kubernetes
 }
 
-// NewClient creates new Kubernetes gRPC client.
+// NewClient creates a new Kubernetes gRPC client.
 func NewClient(clientSet *kubernetes.Clientset, kubeConfig config.Kubernetes) *Client {
 	return &Client{
 		clientSet:  clientSet,
 		kubeConfig: kubeConfig,
 	}
+}
+
+// NewInClusterClient creates a new Kubernetes gRPC client with InClusterConfig.
+func NewInClusterClient(kubeConfig config.Kubernetes) (*Client, error) {
+	// Create the in-cluster kubernetes config.
+	clusterConfig, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, errors.WithMessage(err, "getting in-cluster config")
+	}
+
+	// Create the clientset.
+	clientSet, err := kubernetes.NewForConfig(clusterConfig)
+	if err != nil {
+		return nil, errors.WithMessage(err, "creating kubernetes clientset")
+	}
+
+	return &Client{
+		clientSet:  clientSet,
+		kubeConfig: kubeConfig,
+	}, nil
 }
 
 // GetReplicaCount returns current number of this pod replicas in a Kubernetes cluster.
