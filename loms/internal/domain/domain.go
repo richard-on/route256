@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
@@ -54,14 +55,16 @@ type LOMSRepo interface {
 // Domain represents business logic of Logistics and Order Management System.
 // It should wrap interfaces used in a service.
 type Domain struct {
+	config config.Service
 	LOMSRepo
 	Transactor
 }
 
 // New creates a new Domain.
-func New(repo LOMSRepo, tx Transactor) *Domain {
+func New(config config.Service, repo LOMSRepo, tx Transactor) *Domain {
 	return &Domain{
-		LOMSRepo:   repo,
-		Transactor: tx,
+		config,
+		repo,
+		tx,
 	}
 }

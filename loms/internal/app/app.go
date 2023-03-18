@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -72,7 +71,7 @@ func Run(cfg *config.Config) {
 	tx := transactor.New(pool)
 	repo := repository.New(tx, tx)
 
-	model := domain.New(repo, tx)
+	model := domain.New(cfg.Service, repo, tx)
 
 	grpchealth.RegisterHealthServer(s, health.NewServer())
 	reflection.Register(s)
@@ -86,22 +85,12 @@ func Run(cfg *config.Config) {
 	}()
 	log.Infof("grpc server listening at %v", listener.Addr())
 
-	ticker := time.NewTicker(cfg.CancelInterval)
 	// Start a separate goroutine to check and cancel unpaid orders.
+	errChan := make(chan error)
 	go func() {
-		for {
-			select {
-			// Run cancelling on each tick.
-			case <-ticker.C:
-				errSlice := model.CancelUnpaidOrders(ctx, cfg.Service.PaymentTimeout)
-				if len(errSlice) > 0 {
-					for _, cancelErr := range errSlice {
-						log.Error(cancelErr, "cancelling unpaid orders")
-					}
-				}
-			case <-ctx.Done():
-				return
-			}
+		model.MonitorUnpaid(ctx, errChan)
+		for err := range errChan {
+			log.Error(err, "cancelling unpaid orders")
 		}
 	}()
 

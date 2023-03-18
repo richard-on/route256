@@ -127,7 +127,7 @@ func Run(cfg *config.Config) {
 	tx := transactor.New(pool)
 	repo := repository.New(tx, tx)
 
-	model := domain.New(repo, tx, lomsClient, productClient, lomsClient)
+	model := domain.New(cfg.Service, repo, tx, lomsClient, productClient, lomsClient)
 
 	grpchealth.RegisterHealthServer(s, health.NewServer())
 	reflection.Register(s)

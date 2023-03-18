@@ -21,8 +21,9 @@ type Config struct {
 }
 
 type Service struct {
-	Name        string `yaml:"name"`
-	Environment string `yaml:"environment"`
+	Name           string `yaml:"name"`
+	Environment    string `yaml:"environment"`
+	MaxPoolWorkers int    `yaml:"maxPoolWorkers"`
 }
 
 type Log struct {

@@ -1,223 +1,176 @@
 // Package workerpool implements a goroutine worker pool.
-//
-// This package is heavily inspired by github.com/gammazero/workerpool.
-// The main difference is the requirement to pass context as an argument when creating a pool.
-// Therefore, this implementation can stop executing tasks as soon as context is cancelled.
 package workerpool
 
 import (
 	"context"
 	"sync"
-	"time"
-
-	"gitlab.ozon.dev/rragusskiy/homework-1/lib/queue"
 )
 
-const (
-	// idleTimeout is the minimum period of time that worker needs to be idle to be stopped.
-	idleTimeout = 2 * time.Second
-)
+// WorkerFunc represents a function used as a callback in the worker pool.
+type WorkerFunc[In, Out any] func(ctx context.Context, arg In) (Out, error)
 
-// Pool represents a worker pool.
-type Pool struct {
+// Task represents an incoming worker pool task.
+type Task[In, Out any] struct {
+	// fn is the callback function which will be used in the worker pool.
+	fn WorkerFunc[In, Out]
+	// arg is the argument passed to fn.
+	arg In
+}
+
+// Result represents the outcome of the callback function in the worker pool.
+type Result[Out any] struct {
+	// Value is the main result of the function.
+	Value Out
+	// Err is the error that could have happened in a callback.
+	Err error
+}
+
+// Pool represents a worker pool with fixed number of concurrently running goroutines.
+type Pool[In, Out any] struct {
 	// maxWorkers is the maximum number of concurrent goroutines in the pool.
 	maxWorkers int
-	// taskChan is a channel that is used as a queue for incoming tasks.
-	taskChan chan func()
-	// workerChan is a channel that is used as a queue for active worker.
-	workerChan chan func()
-	// waitQueue is the queue.Queue of enqueued tasks.
-	waitQueue queue.Queue[func()]
-	// stopChan is a channel used to signal the Pool shutdown.
-	stopChan chan struct{}
-	// stopOnce is used to ensure Pool is stopped only once.
-	stopOnce sync.Once
-	// waitEnqueued indicates whether pool needs to wait
-	// for all tasks in waitQueue to execute before stopping.
-	waitEnqueued bool
+	// taskGetChan is a channel that is used as a queue for incoming tasks.
+	taskGetChan chan Task[In, Out]
+	// taskProcessChan is a channel that is used as a queue for active worker.
+	taskProcessChan chan Task[In, Out]
+	// resChan is a channel for outgoing results from workers.
+	resChan chan Result[Out]
+	// results is the slice of Result of the worker pool.
+	results []Result[Out]
+	// closeSignal is a channel used to signal the Pool shutdown.
+	closeSignal chan struct{}
+	// accumulateSignal is a channel used to signal the end of result accumulation.
+	accumulateSignal chan struct{}
+	closeOnce        sync.Once
 	// wg is a WaitGroup used to assure all workers have exited.
 	wg sync.WaitGroup
 }
 
 // New creates a new Pool instance.
-func New(ctx context.Context, maxWorkers int) *Pool {
+func New[In, Out any](ctx context.Context, maxWorkers int) *Pool[In, Out] {
 	// maxWorkers should be at least 1.
 	if maxWorkers < 1 {
 		maxWorkers = 1
 	}
 
-	pool := &Pool{
-		maxWorkers: maxWorkers,
-		taskChan:   make(chan func()),
-		workerChan: make(chan func()),
-		stopChan:   make(chan struct{}),
+	p := &Pool[In, Out]{
+		maxWorkers:       maxWorkers,
+		taskGetChan:      make(chan Task[In, Out]),
+		taskProcessChan:  make(chan Task[In, Out]),
+		resChan:          make(chan Result[Out]),
+		closeSignal:      make(chan struct{}),
+		accumulateSignal: make(chan struct{}),
+		wg:               sync.WaitGroup{},
 	}
 
 	// Start the pool.
-	go pool.run(ctx)
+	go p.run(ctx)
 
-	return pool
+	return p
 }
 
-// Submit adds task to a pool. This operation will not be blocking.
-// Task might be executed immediately or enqueued.
-func (p *Pool) Submit(task func()) {
-	if task != nil {
-		p.taskChan <- task
+// SubmitOne adds one new Task to the pool.
+// This operation may be blocking.
+func (p *Pool[In, Out]) SubmitOne(fn WorkerFunc[In, Out], task In) {
+	p.taskGetChan <- Task[In, Out]{fn, task}
+}
+
+// SubmitMany adds a slice of new Tasks with the same WorkerFunc to the pool.
+// This operation may be blocking.
+func (p *Pool[In, Out]) SubmitMany(fn WorkerFunc[In, Out], tasks []In) {
+	for i := range tasks {
+		p.taskGetChan <- Task[In, Out]{fn, tasks[i]}
 	}
 }
 
-// Stop stops accepting new tasks to the Pool
-// while only waiting for currently running tasks to execute.
-// It will not execute enqueued tasks.
-func (p *Pool) Stop() {
-	p.stop(false)
+// GetResult retrieves a slice of Result.
+// GetResult should generally be called after Wait or StopNow.
+func (p *Pool[In, Out]) GetResult() []Result[Out] {
+	return p.results
 }
 
 // Wait stops accepting new tasks to the Pool and
-// waits for all tasks to execute, including enqueued ones and then stops the Pool.
-func (p *Pool) Wait() {
-	p.stop(true)
-}
-
-// stop tells the runner to shut down, and whether to complete enqueued tasks.
-func (p *Pool) stop(wait bool) {
-	// Task channel should only be closed once.
-	p.stopOnce.Do(func() {
-		p.waitEnqueued = wait
-		// Close task channel so that no more tasks can be accepted.
-		// Wait for currently running tasks to finish.
-		close(p.taskChan)
+// waits for all tasks to execute, then stops the Pool.
+func (p *Pool[In, Out]) Wait() {
+	p.closeOnce.Do(func() {
+		close(p.taskGetChan)
 	})
 
-	// Send a signal to stop.
-	<-p.stopChan
+	<-p.closeSignal
+}
+
+// StopNow stops accepting new tasks to the Pool
+// while not waiting for already active or enqueued tasks.
+func (p *Pool[In, Out]) StopNow() {
+	p.closeOnce.Do(func() {
+		close(p.taskGetChan)
+	})
 }
 
 // run starts the pool and handles its shutdown.
-func (p *Pool) run(ctx context.Context) {
-	defer close(p.stopChan)
+func (p *Pool[In, Out]) run(ctx context.Context) {
+	// close the channel to signal that the Pool have stopped running.
+	defer close(p.closeSignal)
 
-	timeout := time.NewTimer(idleTimeout)
+	workerCount := 0
 
-	// Start processing tasks.
-	workerCount := p.processTasks(ctx, timeout)
+	// Write results from resChan to results in a separate goroutine.
+	go p.accumulateResult()
 
-	if p.waitEnqueued {
-		// Run enqueued tasks.
-		for p.waitQueue.Len() != 0 {
-			// A worker is ready, so assign a new task to it.
-			p.workerChan <- p.waitQueue.Pop()
-		}
+	// Spawn maxWorkers number of goroutines.
+	for workerCount < p.maxWorkers {
+		p.wg.Add(1)
+		go worker(ctx, &p.wg, p.taskProcessChan, p.resChan)
+		workerCount++
 	}
 
-	// Send exit signal to all still active workers.
-	for workerCount > 0 {
-		p.workerChan <- nil
-		workerCount--
+	for {
+		// Try to retrieve a new task.
+		task, ok := <-p.taskGetChan
+		if !ok {
+			// If the channel is closed, no more tasks could be processed,
+			// so initiate shutdown.
+			close(p.taskProcessChan)
+			break
+		}
+
+		// Send the task to processing channel.
+		p.taskProcessChan <- task
 	}
 
 	// Wait for all workers to exit.
 	p.wg.Wait()
-	timeout.Stop()
+	// Close the channel to signal to accumulator that no more results will arrive.
+	close(p.resChan)
+	// Wait for all results to be written.
+	<-p.accumulateSignal
 }
 
-// processTasks manages Pool tasks and workers.
-// It assigns tasks to available worker or enqueues them.
-func (p *Pool) processTasks(ctx context.Context, timeout *time.Timer) int {
-	workerCount := 0
-	idle := false
-	for {
-		// Check tasks in waitQueue.
-		if p.waitQueue.Len() != 0 {
-			if !p.processWaitQueue() {
-				// If taskChan is closed, no more tasks could be processed.
-				return workerCount
-			}
-			continue
-		}
+// accumulateResult writes Result sent to resChan to results slice.
+func (p *Pool[In, Out]) accumulateResult() {
+	// close the channel to signal that all results have been written.
+	defer close(p.accumulateSignal)
+	for res := range p.resChan {
+		p.results = append(p.results, res)
+	}
+}
 
+func worker[In, Out any](ctx context.Context, wg *sync.WaitGroup,
+	taskChan <-chan Task[In, Out], resChan chan<- Result[Out]) {
+
+	for task := range taskChan {
 		select {
-		case task, ok := <-p.taskChan:
-			if !ok {
-				// If taskChan is closed, no more tasks could be processed.
-				return workerCount
-			}
-
-			select {
-			case p.workerChan <- task: // If available worker exists, assign task to it.
-			default:
-				// If workerCount did not hit the limit,
-				// spawn a new worker and assign current task to it.
-				if workerCount < p.maxWorkers {
-					p.wg.Add(1)
-					go worker(ctx, task, p.workerChan, &p.wg)
-					workerCount++
-				} else {
-					p.waitQueue.Push(task) // If the limit was hit, enqueue current task.
-				}
-			}
-			idle = false
-
-		case <-timeout.C:
-			if idle && workerCount > 0 {
-				if p.killIdleWorker() {
-					workerCount--
-				}
-			}
-			idle = true
-			timeout.Reset(idleTimeout)
-		}
-	}
-}
-
-// processWaitQueue manages the wait queue.
-// It enqueues tasks and dequeues them if a free worker is found.
-func (p *Pool) processWaitQueue() bool {
-	select {
-	case task, ok := <-p.taskChan:
-		if !ok {
-			// If taskChan is closed, no more tasks could be enqueued.
-			return false
-		}
-		// Push current task to the end of the queue.
-		p.waitQueue.Push(task)
-
-	// If a free worker is discovered, assign the first element on the queue to it.
-	case p.workerChan <- p.waitQueue.Peek():
-		// Then, pop this element from wait queue.
-		p.waitQueue.Pop()
-	}
-
-	return true
-}
-
-// killIdleWorker tries to kill the worker.
-func (p *Pool) killIdleWorker() bool {
-	select {
-	case p.workerChan <- nil:
-		// Sent kill signal to worker.
-		return true
-	default:
-		// No ready workers. All, if any, workers are busy.
-		return false
-	}
-}
-
-// worker runs the tasks.
-// It will not execute provided task if context was cancelled.
-func worker(ctx context.Context, task func(), workerChan chan func(), wg *sync.WaitGroup) {
-	for task != nil {
-		select {
+		// if context was cancelled, don't execute the task.
 		case <-ctx.Done():
-			// if context was cancelled, don't execute the task.
 		default:
-			// Otherwise, execute task
-			task()
+			// Otherwise, execute task.
+			res, err := task.fn(ctx, task.arg)
+			// And write its result to resChan.
+			resChan <- Result[Out]{res, err}
 		}
-
-		// Get a new task.
-		task = <-workerChan
 	}
+
+	// Signal that this worker has exited.
 	wg.Done()
+	return
 }

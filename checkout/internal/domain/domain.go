@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/model"
 )
 
@@ -56,6 +57,7 @@ type CheckoutRepo interface {
 
 // Domain represents business logic of checkout service. It wraps interfaces used in a service.
 type Domain struct {
+	config config.Service
 	CheckoutRepo
 	Transactor
 	StockChecker
@@ -64,9 +66,10 @@ type Domain struct {
 }
 
 // New creates a new Domain.
-func New(repo CheckoutRepo, transactor Transactor,
+func New(config config.Service, repo CheckoutRepo, transactor Transactor,
 	checker StockChecker, lister ProductLister, creator OrderCreator) *Domain {
 	return &Domain{
+		config,
 		repo,
 		transactor,
 		checker,
