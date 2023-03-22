@@ -54,7 +54,7 @@ services:
 
   # Checkout service app
   checkout:
-    image: checkout
+    image: route256-checkout
     build: ./checkout/
     depends_on:
       - postgres-checkout
@@ -115,7 +115,7 @@ services:
 
   # LOMS service app
   loms:
-    image: loms
+    image: route256-loms
     build: ./loms/
     depends_on:
       - postgres-loms
@@ -125,7 +125,7 @@ services:
 
   # Notification service app
   notification:
-    image: notification
+    image: route256-notification
     build: ./notification
     ports:
       - "40000:40000"

@@ -3,7 +3,9 @@ package domain
 
 import (
 	"context"
+	"time"
 
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
@@ -36,6 +38,7 @@ type LOMSRepo interface {
 
 	ListOrderInfo(ctx context.Context, orderID int64) (model.Order, error)
 	ListOrderItems(ctx context.Context, orderID int64) ([]model.Item, error)
+	ListUnpaidOrders(ctx context.Context, paymentWait time.Duration) ([]int64, error)
 
 	CancelOrder(ctx context.Context, orderID int64) error
 	PayOrder(ctx context.Context, orderID int64) error
@@ -52,14 +55,16 @@ type LOMSRepo interface {
 // Domain represents business logic of Logistics and Order Management System.
 // It should wrap interfaces used in a service.
 type Domain struct {
+	config config.Service
 	LOMSRepo
 	Transactor
 }
 
 // New creates a new Domain.
-func New(repo LOMSRepo, tx Transactor) *Domain {
+func New(config config.Service, repo LOMSRepo, tx Transactor) *Domain {
 	return &Domain{
-		LOMSRepo:   repo,
-		Transactor: tx,
+		config,
+		repo,
+		tx,
 	}
 }

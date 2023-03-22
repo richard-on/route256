@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: checkout
+  namespace: route256
+  labels:
+    app: checkout
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    cert-manager.io/cluster-issuer: lets-encrypt
+spec:
+  tls:
+    - hosts:
+        - checkout.route256.richardhere.dev
+      secretName: certman-checkout-route256-richardhere
+  rules:
+    - host: checkout.route256.richardhere.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: checkout
+                port:
+                  number: 30000

@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-loms
+  namespace: route256
+  labels:
+    name: postgres-loms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-loms
+  template:
+    metadata:
+      labels:
+        app: postgres-loms
+    spec:
+      containers:
+        - name: postgres-loms
+          image: postgres:15.1
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - -c
+            - hba_file=/etc/pg_hba.conf
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-loms
+          readinessProbe:
+            exec:
+              command: [ "pg_isready", "-U", "admin", "-d", "loms", "-q" ]
+            initialDelaySeconds: 20
+            failureThreshold: 3
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: [ "pg_isready", "-U", "admin", "-d", "loms", "-q" ]
+            initialDelaySeconds: 20
+            failureThreshold: 3
+            periodSeconds: 5
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: "/var/lib/postgresql/data"
+              name: postgredb
+            - mountPath: "/etc/postgresql.conf"
+              subPath: postgresql.conf
+              name: pgconf
+            - mountPath: "/etc/pg_hba.conf"
+              subPath: pg_hba.conf
+              name: pghba
+      volumes:
+        - name: pgconf
+          configMap:
+            name: pgconf-loms
+        - name: pghba
+          configMap:
+            name: pghba-loms
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: loms-pv-claim

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
@@ -59,4 +60,27 @@ func (r *Repository) ListOrderItems(ctx context.Context, orderID int64) ([]model
 	}
 
 	return convert.ToModelItemSlice(items), nil
+}
+
+// ListUnpaidOrders gets all order, that are awaiting payment for more than provided duration.
+func (r *Repository) ListUnpaidOrders(ctx context.Context, paymentWait time.Duration) ([]int64, error) {
+	db := r.QueryEngineProvider.GetQueryEngine(ctx)
+
+	query := sq.Select("order_id").
+		From("orders").
+		Where(sq.Lt{"created_at": time.Now().Add(-paymentWait)}).
+		Where(sq.Eq{"status": model.AwaitingPayment}).
+		PlaceholderFormat(sq.Dollar)
+
+	raw, args, err := query.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	var ids []int64
+	if err = pgxscan.Select(ctx, db, &ids, raw, args...); err != nil {
+		return nil, err
+	}
+
+	return ids, nil
 }

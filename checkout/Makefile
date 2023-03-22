@@ -9,7 +9,7 @@ RPCNAME=checkout.proto
 PROTOPATH=api/checkout/v1
 RPCPATH=pkg/checkout
 BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
-APPVER=0.3.0
+APPVER=0.4.0
 
 all: format build test lint
 
@@ -82,3 +82,13 @@ generate:
 
 migrate:
 	exec ./migration.sh
+
+docker-push:
+	docker build -t richardhere/route256-checkout .
+	docker push richardhere/route256-checkout
+
+config-file:
+	kubectl create configmap checkout -n route256 --from-file=config/config.yaml
+	kubectl create configmap odyssey-checkout -n route256 --from-file=config/odyssey/odyssey.conf
+	kubectl create configmap pgconf-checkout -n route256 --from-file=config/postgres/postgresql.conf
+	kubectl create configmap pghba-checkout -n route256 --from-file=config/postgres/pg_hba.conf

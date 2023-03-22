@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loms
+  namespace: route256
+  labels:
+    name: loms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loms
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: loms
+    spec:
+      containers:
+        - image: richardhere/route256-loms:latest
+          livenessProbe:
+            grpc:
+              port: 35000
+            initialDelaySeconds: 10
+            failureThreshold: 3
+            periodSeconds: 5
+            timeoutSeconds: 5
+          name: loms
+          ports:
+            - containerPort: 35000
+          envFrom:
+            - configMapRef:
+                name: loms
+          resources:
+            limits:
+              cpu: 300m
+              memory: 100Mi
+            requests:
+              cpu: 100m
+              memory: 30Mi
+      restartPolicy: Always

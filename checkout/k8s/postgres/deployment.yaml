@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-checkout
+  namespace: route256
+  labels:
+    name: postgres-checkout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-checkout
+  template:
+    metadata:
+      labels:
+        app: postgres-checkout
+    spec:
+      containers:
+        - name: postgres-checkout
+          image: postgres:15.1
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - -c
+            - hba_file=/etc/pg_hba.conf
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-checkout
+          readinessProbe:
+            exec:
+              command: [ "pg_isready", "-U", "admin", "-d", "checkout", "-q" ]
+            initialDelaySeconds: 20
+            failureThreshold: 3
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: [ "pg_isready", "-U", "admin", "-d", "checkout", "-q" ]
+            initialDelaySeconds: 20
+            failureThreshold: 3
+            periodSeconds: 5
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: "/var/lib/postgresql/data"
+              name: postgredb
+            - mountPath: "/etc/postgresql.conf"
+              subPath: postgresql.conf
+              name: pgconf
+            - mountPath: "/etc/pg_hba.conf"
+              subPath: pg_hba.conf
+              name: pghba
+      volumes:
+        - name: pgconf
+          configMap:
+            name: pgconf-checkout
+        - name: pghba
+          configMap:
+            name: pghba-checkout
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: checkout-pv-claim

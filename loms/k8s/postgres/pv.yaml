@@ -1,0 +1,32 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: loms-pv-volume
+  namespace: route256
+  labels:
+    name: loms-pv-volume
+    type: local
+    app: postgres-loms
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/mnt/data/loms"
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: loms-pv-claim
+  namespace: route256
+  labels:
+    app: postgres-loms
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi

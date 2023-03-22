@@ -2,8 +2,9 @@ package logger
 
 import (
 	"fmt"
-	"github.com/rs/zerolog"
 	"io"
+
+	"github.com/rs/zerolog"
 )
 
 // Logger is a wrapper for a logging library.

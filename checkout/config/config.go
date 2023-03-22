@@ -3,6 +3,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
@@ -12,6 +13,7 @@ type Config struct {
 	Service             `yaml:"service"`
 	Log                 `yaml:"log"`
 	Postgres            `yaml:"postgres"`
+	Kubernetes          `yaml:"kubernetes"`
 	GRPC                `yaml:"grpc"`
 	LOMS                `yaml:"loms"`
 	ProductService      `yaml:"productService"`
@@ -19,7 +21,9 @@ type Config struct {
 }
 
 type Service struct {
-	Name string `yaml:"name"`
+	Name           string `yaml:"name"`
+	Environment    string `yaml:"environment"`
+	MaxPoolWorkers int    `yaml:"maxPoolWorkers"`
 }
 
 type Log struct {
@@ -35,6 +39,12 @@ type Postgres struct {
 	SSLMode  string `yaml:"sslMode"`
 }
 
+type Kubernetes struct {
+	Namespace      string        `yaml:"namespace"`
+	LabelSelector  string        `yaml:"labelSelector"`
+	UpdateInterval time.Duration `yaml:"updateInterval"`
+}
+
 type GRPC struct {
 	Port string `yaml:"port"`
 }
@@ -43,9 +53,15 @@ type LOMS struct {
 	URL string `yaml:"url"`
 }
 
+type RateLimit struct {
+	Rate  int `yaml:"rate"`
+	Burst int `yaml:"burst"`
+}
+
 type ProductService struct {
-	Token string `yaml:"token"`
-	URL   string `yaml:"url"`
+	Token     string    `yaml:"token"`
+	URL       string    `yaml:"url"`
+	RateLimit RateLimit `yaml:"rateLimit"`
 }
 
 type NotificationService struct{}

@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
 	checkoutservice "gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/api/checkout"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/client/grpc/kube"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/client/grpc/loms"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/client/grpc/productservice"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain"
@@ -22,8 +23,11 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/repository/transactor"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/ratelimit"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/health"
+	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -48,7 +52,37 @@ func Run(cfg *config.Config) {
 	if err != nil {
 		log.Fatal(err, "error while dialing product service grpc server")
 	}
-	productClient := productservice.NewClient(productConn, cfg.ProductService.Token)
+
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
+	defer cancel()
+
+	var productClient *productservice.Client
+	// Execute if app is run inside kubernetes cluster.
+	if cfg.Service.Environment == "kubernetes" {
+		// Create a new Kubernetes client.
+		kubeClient, err := kube.NewInClusterClient(cfg.Kubernetes)
+		if err != nil {
+			log.Fatal(err, "error while creating kubernetes client")
+		}
+
+		// Create a product service with dynamic rate limit.
+		// Rate limit is changed based on the number of active replicas.
+		productClient = productservice.NewClient(productConn, cfg.ProductService.Token,
+			ratelimit.New(ctx, cfg.RateLimit.Rate,
+				ratelimit.WithBurst(cfg.RateLimit.Burst),
+				ratelimit.WithReplicas(kubeClient, cfg.Kubernetes.UpdateInterval),
+			),
+		)
+	} else {
+		// Create a product service without dynamic rate limit
+		// as we don't expect horizontal scaling.
+		productClient = productservice.NewClient(productConn, cfg.ProductService.Token,
+			ratelimit.New(ctx, cfg.RateLimit.Rate,
+				ratelimit.WithBurst(cfg.RateLimit.Burst),
+			),
+		)
+	}
 
 	listener, err := net.Listen("tcp", net.JoinHostPort("", cfg.GRPC.Port))
 	if err != nil {
@@ -67,10 +101,6 @@ func Run(cfg *config.Config) {
 		)),
 	)
 
-	ctx, cancel := signal.NotifyContext(context.Background(),
-		os.Interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGHUP)
-	defer cancel()
-
 	pgConfig, err := pgxpool.ParseConfig(fmt.Sprintf("postgres://%v:%v@%v:%v/%v",
 		cfg.Postgres.User, cfg.Postgres.Password, cfg.Postgres.Host, cfg.Postgres.Port, cfg.Postgres.DB))
 	if err != nil {
@@ -86,13 +116,15 @@ func Run(cfg *config.Config) {
 	tx := transactor.New(pool)
 	repo := repository.New(tx, tx)
 
-	model := domain.New(repo, tx, lomsClient, productClient, lomsClient)
+	model := domain.New(cfg.Service, repo, tx, lomsClient, productClient, lomsClient)
 
+	grpchealth.RegisterHealthServer(s, health.NewServer())
 	reflection.Register(s)
 	checkout.RegisterCheckoutServer(s, checkoutservice.New(model))
 
 	go func() {
-		if err = s.Serve(listener); !errors.Is(err, grpc.ErrServerStopped) {
+		err = s.Serve(listener)
+		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatal(err, "error while running grpc server")
 		}
 	}()

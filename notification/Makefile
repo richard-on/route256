@@ -42,3 +42,7 @@ install-smartimports: bindir
 	test -f ${SMARTIMPORTS} || \
 		(GOBIN=${BINDIR} go install github.com/pav5000/smartimports/cmd/smartimports@latest && \
 		mv ${BINDIR}/smartimports ${SMARTIMPORTS})
+
+docker-push:
+	docker tag route256-notification richardhere/route256-notification:latest
+	docker push richardhere/route256-notification

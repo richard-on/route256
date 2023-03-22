@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: odyssey-checkout
+  namespace: route256
+  labels:
+    app: odyssey-checkout
+spec:
+  ports:
+    - name: "http"
+      protocol: TCP
+      port: 6422
+      targetPort: 6422
+  selector:
+    app: odyssey-checkout

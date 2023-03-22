@@ -21,6 +21,8 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/transactor"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -69,17 +71,28 @@ func Run(cfg *config.Config) {
 	tx := transactor.New(pool)
 	repo := repository.New(tx, tx)
 
-	model := domain.New(repo, tx)
+	model := domain.New(cfg.Service, repo, tx)
 
+	grpchealth.RegisterHealthServer(s, health.NewServer())
 	reflection.Register(s)
 	loms.RegisterLOMSServer(s, lomsservice.New(model))
 
 	go func() {
-		if err = s.Serve(listener); !errors.Is(err, grpc.ErrServerStopped) {
+		err = s.Serve(listener)
+		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatal(err, "error while running grpc server")
 		}
 	}()
 	log.Infof("grpc server listening at %v", listener.Addr())
+
+	// Start a separate goroutine to check and cancel unpaid orders.
+	errChan := make(chan error)
+	go func() {
+		model.MonitorUnpaid(ctx, errChan)
+		for err := range errChan {
+			log.Error(err, "cancelling unpaid orders")
+		}
+	}()
 
 	<-ctx.Done()
 	cancel()
