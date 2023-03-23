@@ -10,7 +10,7 @@ require (
 	github.com/jackc/pgx/v4 v4.18.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
-	gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230228162908-78bf84805ffb
+	gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230322154410-776eb9dfaa07
 	go.uber.org/multierr v1.5.0
 	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.28.1

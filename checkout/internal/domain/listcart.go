@@ -3,8 +3,13 @@ package domain
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/workerpool"
+)
+
+var (
+	ErrEmptyCart = errors.New("cart is empty")
 )
 
 // ListCart lists all products that are currently in a user's cart.
@@ -21,7 +26,7 @@ func (d *Domain) ListCart(ctx context.Context, user int64) ([]model.Item, uint32
 	wp := workerpool.New[model.Item, model.Item](poolCtx, d.config.MaxPoolWorkers)
 
 	wp.SubmitMany(func(poolCtx context.Context, item model.Item) (model.Item, error) {
-		product, err := d.ProductLister.GetProduct(poolCtx, item.SKU)
+		product, err := d.ProductLister.GetProduct(ctx, item.SKU)
 		if err != nil {
 			// Even a single error will render the result unusable,
 			// so cancel context and stop worker pool as soon as possible.
@@ -34,7 +39,7 @@ func (d *Domain) ListCart(ctx context.Context, user int64) ([]model.Item, uint32
 			Price: product.Price,
 		}
 
-		return item, err
+		return item, nil
 
 	}, items)
 

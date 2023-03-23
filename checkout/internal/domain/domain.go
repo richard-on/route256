@@ -1,5 +1,11 @@
 package domain
 
+//go:generate minimock -i StockChecker -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i ProductLister -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i OrderCreator -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i github.com/jackc/pgx/v4.Tx -o ./mocks/tx_minimock.go -n TxMock
+//go:generate minimock -i CheckoutRepo -o ./mocks/ -s "_minimock.go"
+
 import (
 	"context"
 
@@ -76,4 +82,28 @@ func New(config config.Service, repo CheckoutRepo, transactor Transactor,
 		lister,
 		creator,
 	}
+}
+
+// NewMockDomain creates a new mock Domain used for testing.
+func NewMockDomain(opts ...any) *Domain {
+	d := Domain{}
+
+	for _, v := range opts {
+		switch s := v.(type) {
+		case config.Service:
+			d.config = s
+		case CheckoutRepo:
+			d.CheckoutRepo = s
+		case Transactor:
+			d.Transactor = s
+		case StockChecker:
+			d.StockChecker = s
+		case ProductLister:
+			d.ProductLister = s
+		case OrderCreator:
+			d.OrderCreator = s
+		}
+	}
+
+	return &d
 }

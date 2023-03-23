@@ -37,8 +37,6 @@ func (d *Domain) DeleteFromCart(ctx context.Context, user int64, item model.Item
 			}
 		case count < int32(item.Count):
 			return errors.WithMessagef(ErrNotEnoughInCart, "item %v", item.SKU)
-		default:
-			return ErrNotInCart
 		}
 
 		return nil
