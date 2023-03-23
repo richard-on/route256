@@ -1,22 +1,31 @@
 package transactor
 
+//go:generate minimock -i Conn -o ./mocks/ -s "_minimock.go"
+
 import (
 	"context"
 
+	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/multierr"
 )
 
 type txKey string
 
-const key = txKey("tx")
+const Key = txKey("tx")
 
 type Transactor struct {
-	pool *pgxpool.Pool
+	pool Conn
 }
 
-func New(pool *pgxpool.Pool) *Transactor {
+type Conn interface {
+	Begin(context.Context) (pgx.Tx, error)
+	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
+	Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
+	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
+}
+
+func New(pool Conn) *Transactor {
 	return &Transactor{
 		pool: pool,
 	}
@@ -30,7 +39,7 @@ func (t *Transactor) RunReadCommitted(ctx context.Context, f func(txCtx context.
 		return err
 	}
 
-	if err = f(context.WithValue(ctx, key, tx)); err != nil {
+	if err = f(context.WithValue(ctx, Key, tx)); err != nil {
 		return multierr.Combine(err, tx.Rollback(ctx))
 	}
 
@@ -49,7 +58,7 @@ func (t *Transactor) RunRepeatableRead(ctx context.Context, f func(txCtx context
 		return err
 	}
 
-	if err = f(context.WithValue(ctx, key, tx)); err != nil {
+	if err = f(context.WithValue(ctx, Key, tx)); err != nil {
 		return multierr.Combine(err, tx.Rollback(ctx))
 	}
 
@@ -68,7 +77,7 @@ func (t *Transactor) RunSerializable(ctx context.Context, f func(txCtx context.C
 		return err
 	}
 
-	if err = f(context.WithValue(ctx, key, tx)); err != nil {
+	if err = f(context.WithValue(ctx, Key, tx)); err != nil {
 		return multierr.Combine(err, tx.Rollback(ctx))
 	}
 

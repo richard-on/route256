@@ -1,4 +1,7 @@
 
+test-all:
+	go test -v ./checkout/... ./loms/... -coverprofile=coverage
+
 build-all:
 	cd checkout && make build
 	cd loms && make build

@@ -193,8 +193,8 @@ github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/zenazn/goji v0.9.0/go.mod h1:7S9M489iMyHBNxwZnk9/EHS098H4/F6TATF2mIxtB1Q=
-gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230228162908-78bf84805ffb h1:Xo/IQRr/yiQ8JCscylKLOr0JlrWln5A5WELgTESPO6Y=
-gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230228162908-78bf84805ffb/go.mod h1:LW+MniIB+mYt8tzoz7ALpsBp/PfX4blI2nZHo+1Lfc8=
+gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230322154410-776eb9dfaa07 h1:1wLFhGbaowmjMWW/0lEklP7qhn+lTyFTw/XnJuyJB1Q=
+gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230322154410-776eb9dfaa07/go.mod h1:xaAQgxXvZm4TyZyocEsvAJO68SntkxXVwN0h8/WsRDI=
 go.uber.org/atomic v1.3.2/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
 go.uber.org/atomic v1.4.0/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
 go.uber.org/atomic v1.5.0/go.mod h1:sABNBOSYdrvTF6hTgEIbc7YasKWGhgEQZyfxyTvoXHQ=

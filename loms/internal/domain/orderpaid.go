@@ -8,12 +8,12 @@ func (d *Domain) OrderPaid(ctx context.Context, orderID int64) error {
 	// This transaction ensures that if order is paid, items are removed from reserve.
 	err := d.Transactor.RunReadCommitted(ctx, func(ctxTX context.Context) (err error) {
 
-		err = d.LOMSRepo.PayOrder(ctx, orderID)
+		err = d.LOMSRepo.PayOrder(ctxTX, orderID)
 		if err != nil {
 			return err
 		}
 
-		_, _, err = d.LOMSRepo.RemoveItemsFromReserved(ctx, orderID)
+		_, _, err = d.LOMSRepo.RemoveItemsFromReserved(ctxTX, orderID)
 		if err != nil {
 			return err
 		}
