@@ -55,7 +55,11 @@ func (r *Repository) ListOrderItems(ctx context.Context, orderID int64) ([]model
 	}
 
 	var items []schema.Item
-	if err = pgxscan.Select(ctx, db, &items, raw, args...); err != nil {
+	err = pgxscan.Select(ctx, db, &items, raw, args...)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, domain.ErrNoOrderItems
+	}
+	if err != nil {
 		return nil, err
 	}
 

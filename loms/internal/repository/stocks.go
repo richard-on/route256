@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
@@ -54,7 +55,7 @@ func (r *Repository) IncreaseStock(ctx context.Context, sku int64, stock model.S
 		return err
 	}
 	if exec.RowsAffected() == 0 {
-		return errors.New("warehouse or sku does not exist")
+		return domain.ErrStockNotExists
 	}
 
 	return nil

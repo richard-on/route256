@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	ErrEmptyOrder = errors.New("order does not exist")
+	ErrEmptyOrder   = errors.New("order does not exist")
+	ErrNoOrderItems = errors.New("order does not contain any items")
 )
 
 // ListOrder lists OrderInfo for a given orderID.

@@ -3,9 +3,15 @@ package domain
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"time"
 
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/workerpool"
+)
+
+var (
+	ErrOrderCancelled = errors.New("order does not exist or has already been cancelled")
+	ErrStockNotExists = errors.New("warehouse or sku does not exist")
 )
 
 // CancelOrder cancels order, makes previously reserved products available.
