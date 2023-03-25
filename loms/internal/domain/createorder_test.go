@@ -2,21 +2,24 @@ package domain
 
 import (
 	"context"
+	"testing"
+
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/gojuno/minimock/v3"
 	"github.com/jackc/pgx/v4"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain/mocks"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/transactor"
 	txMocks "gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/transactor/mocks"
-	"testing"
 )
 
 func TestCreateOrder(t *testing.T) {
 	t.Parallel()
 	type LOMSRepoMockFunc func(mc *minimock.Controller) LOMSRepo
-	type ConnMockFunc func(mc *minimock.Controller) transactor.Conn
+	type DBMockFunc func(mc *minimock.Controller) transactor.DB
 
 	type args struct {
 		ctx   context.Context
@@ -31,9 +34,10 @@ func TestCreateOrder(t *testing.T) {
 
 	var (
 		mc      = minimock.NewController(t)
-		tx      = txMocks.NewTxMock(t)
+		tx      = mocks.NewTxMock(t)
 		ctx     = context.Background()
 		ctxTx   = context.WithValue(ctx, transactor.Key, tx)
+		cfg     = config.Service{MaxPoolWorkers: 5}
 		orderID = int64(gofakeit.Number(1, 1<<31))
 		user    = int64(gofakeit.Number(1, 1<<31))
 
@@ -46,7 +50,7 @@ func TestCreateOrder(t *testing.T) {
 			},
 			{
 				SKU:   skus[1],
-				Count: 10,
+				Count: 8,
 			},
 		}
 
@@ -79,39 +83,13 @@ func TestCreateOrder(t *testing.T) {
 			},
 		}
 
-		//itemNum      = 5
-		//itemOrderNum = 3
-		//items        []model.Item
-		//itemStocks   []itemStock
+		insertInfoErr   = errors.New("insert order info error")
+		insertItemsErr  = errors.New("insert order items error")
+		getStocksErr    = errors.New("get stocks error")
+		changeStatusErr = errors.New("change status error")
 	)
 
 	t.Cleanup(mc.Finish)
-
-	/*for i := 0; i < itemNum; i++ {
-		sku := gofakeit.Uint32()
-		count := uint16(gofakeit.Number(1, 10))
-
-		items = append(items, model.Item{
-			SKU:   sku,
-			Count: count,
-		})
-
-		stockNum := gofakeit.Number(1, 100)
-		stocks := make([]model.Stock, 0, stockNum)
-		for j := 0; j < gofakeit.Number(1, 100); j++ {
-			stocks = append(stocks, model.Stock{
-				WarehouseID: int64(gofakeit.Number(1, 100)),
-				Count:       uint64(gofakeit.Number(10, 100000)),
-			})
-		}
-		itemStocks = append(itemStocks, itemStock{
-			item: model.Item{
-				SKU:   sku,
-				Count: count,
-			},
-			stocks: stocks,
-		})
-	}*/
 
 	tests := []struct {
 		name         string
@@ -119,7 +97,7 @@ func TestCreateOrder(t *testing.T) {
 		want         int64
 		err          error
 		lomsRepoMock LOMSRepoMockFunc
-		connMockFunc ConnMockFunc
+		DBMockFunc   DBMockFunc
 	}{
 		{
 			name: "Positive-EnoughStocksInFirstWarehouse",
@@ -139,39 +117,203 @@ func TestCreateOrder(t *testing.T) {
 				for i := 0; i < len(itemsToBuy); i++ {
 					mock.GetStocksMock.When(ctxTx, itemsToBuy[i].SKU).Then(itemStocks[i].stocks, nil)
 
-					for j := 0; j < len(itemStocks[i].stocks); j++ {
-						// In this scenario, we assume that the first stock is enough for the order.
-						if itemStocks[i].stocks[j].Count >= uint64(itemsToBuy[i].Count) {
-							itemStocks[i].stocks[j].Count = uint64(itemsToBuy[i].Count)
-						} else if itemStocks[i].stocks[j].Count < uint64(itemsToBuy[i].Count) {
-							itemsToBuy[i].Count -= uint16(itemStocks[i].stocks[j].Count)
-						}
-						mock.DecreaseStockMock.When(ctxTx, int64(itemsToBuy[i].SKU), itemStocks[i].stocks[j]).
-							Then(nil)
-						mock.ReserveItemMock.When(ctxTx, orderID, int64(itemsToBuy[i].SKU), itemStocks[i].stocks[j]).
-							Then(nil)
-					}
-
-					/*if uint64(itemsToBuy[i].Count) >= itemStocks[i].stocks[0].Count {
-						itemStocks[i].stocks[0].Count = uint64(itemsToBuy[i].Count)
-						mock.DecreaseStockMock.When(ctxTx, int64(itemsToBuy[i].SKU), itemStocks[i].stocks[0]).
-							Then(nil)
-						mock.ReserveItemMock.When(ctxTx, orderID, int64(itemsToBuy[i].SKU), itemStocks[i].stocks[0]).
-							Then(nil)
-					} else {
-
-					}*/
+					itemStocks[i].stocks[0].Count = uint64(itemsToBuy[i].Count)
+					mock.DecreaseStockMock.When(ctxTx, int64(itemsToBuy[i].SKU), itemStocks[i].stocks[0]).
+						Then(nil)
+					mock.ReserveItemMock.When(ctxTx, orderID, int64(itemsToBuy[i].SKU), itemStocks[i].stocks[0]).
+						Then(nil)
 				}
 
 				mock.ChangeOrderStatusMock.Expect(ctxTx, orderID, model.AwaitingPayment).Return(nil)
 
 				return mock
 			},
-			connMockFunc: func(mc *minimock.Controller) transactor.Conn {
-				mock := txMocks.NewConnMock(mc)
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
 				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Then(tx, nil)
 				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead}).Then(tx, nil)
 				tx.CommitMock.Expect(ctx).Return(nil)
+
+				return mock
+			},
+		},
+		{
+			name: "ErrInsertOrderInfo",
+			args: args{
+				ctx:   ctx,
+				user:  user,
+				items: itemsToBuy,
+			},
+			want: 0,
+			err:  insertInfoErr,
+			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
+				mock := mocks.NewLOMSRepoMock(mc)
+				mock.InsertOrderInfoMock.Expect(ctxTx, model.Order{Status: model.NewOrder, User: user}).
+					Return(0, insertInfoErr)
+
+				return mock
+			},
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Then(tx, nil)
+				tx.RollbackMock.Expect(ctx).Return(nil)
+
+				return mock
+			},
+		},
+		{
+			name: "ErrInsertOrderItems",
+			args: args{
+				ctx:   ctx,
+				user:  user,
+				items: itemsToBuy,
+			},
+			want: 0,
+			err:  insertItemsErr,
+			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
+				mock := mocks.NewLOMSRepoMock(mc)
+				mock.InsertOrderInfoMock.Expect(ctxTx, model.Order{Status: model.NewOrder, User: user}).
+					Return(orderID, nil)
+				mock.InsertOrderItemsMock.Expect(ctxTx, orderID, itemsToBuy).Return(insertItemsErr)
+
+				return mock
+			},
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Then(tx, nil)
+				tx.RollbackMock.Expect(ctx).Return(nil)
+
+				return mock
+			},
+		},
+		{
+			name: "ErrGetStocks",
+			args: args{
+				ctx:   ctx,
+				user:  user,
+				items: itemsToBuy,
+			},
+			want: 0,
+			err:  getStocksErr,
+			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
+				mock := mocks.NewLOMSRepoMock(mc)
+				mock.InsertOrderInfoMock.Expect(ctxTx, model.Order{Status: model.NewOrder, User: user}).
+					Return(orderID, nil)
+				mock.InsertOrderItemsMock.Expect(ctxTx, orderID, itemsToBuy).Return(nil)
+				mock.GetStocksMock.When(ctxTx, itemsToBuy[0].SKU).Then(itemStocks[0].stocks, getStocksErr)
+
+				mock.ChangeOrderStatusMock.Expect(ctx, orderID, model.Failed).Return(nil)
+
+				return mock
+			},
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Then(tx, nil)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead}).Then(tx, nil)
+				tx.CommitMock.Expect(ctx).Return(nil)
+				tx.RollbackMock.Expect(ctx).Return(nil)
+
+				return mock
+			},
+		},
+		{
+			name: "ErrDecreaseStock",
+			args: args{
+				ctx:   ctx,
+				user:  user,
+				items: itemsToBuy,
+			},
+			want: 0,
+			err:  ErrStockNotExists,
+			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
+				mock := mocks.NewLOMSRepoMock(mc)
+				mock.InsertOrderInfoMock.Expect(ctxTx, model.Order{Status: model.NewOrder, User: user}).
+					Return(orderID, nil)
+				mock.InsertOrderItemsMock.Expect(ctxTx, orderID, itemsToBuy).Return(nil)
+
+				mock.GetStocksMock.When(ctxTx, itemsToBuy[0].SKU).Then(itemStocks[0].stocks, nil)
+
+				itemStocks[0].stocks[0].Count = uint64(itemsToBuy[0].Count)
+				mock.DecreaseStockMock.When(ctxTx, int64(itemsToBuy[0].SKU), itemStocks[0].stocks[0]).
+					Then(ErrStockNotExists)
+
+				mock.ChangeOrderStatusMock.Expect(ctx, orderID, model.Failed).Return(nil)
+
+				return mock
+			},
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Then(tx, nil)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead}).Then(tx, nil)
+				tx.CommitMock.Expect(ctx).Return(nil)
+				tx.RollbackMock.Expect(ctx).Return(nil)
+
+				return mock
+			},
+		},
+		{
+			name: "ErrReserveItem",
+			args: args{
+				ctx:   ctx,
+				user:  user,
+				items: itemsToBuy,
+			},
+			want: 0,
+			err:  ErrStockNotExists,
+			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
+				mock := mocks.NewLOMSRepoMock(mc)
+				mock.InsertOrderInfoMock.Expect(ctxTx, model.Order{Status: model.NewOrder, User: user}).
+					Return(orderID, nil)
+				mock.InsertOrderItemsMock.Expect(ctxTx, orderID, itemsToBuy).Return(nil)
+
+				mock.GetStocksMock.When(ctxTx, itemsToBuy[0].SKU).Then(itemStocks[0].stocks, nil)
+
+				itemStocks[0].stocks[0].Count = uint64(itemsToBuy[0].Count)
+				mock.DecreaseStockMock.When(ctxTx, int64(itemsToBuy[0].SKU), itemStocks[0].stocks[0]).
+					Then(nil)
+				mock.ReserveItemMock.When(ctxTx, orderID, int64(itemsToBuy[0].SKU), itemStocks[0].stocks[0]).
+					Then(ErrStockNotExists)
+
+				mock.ChangeOrderStatusMock.Expect(ctx, orderID, model.Failed).Return(nil)
+
+				return mock
+			},
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Then(tx, nil)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead}).Then(tx, nil)
+				tx.CommitMock.Expect(ctx).Return(nil)
+				tx.RollbackMock.Expect(ctx).Return(nil)
+
+				return mock
+			},
+		},
+		{
+			name: "ErrChangeOrderStatusFailed",
+			args: args{
+				ctx:   ctx,
+				user:  user,
+				items: itemsToBuy,
+			},
+			want: 0,
+			err:  changeStatusErr,
+			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
+				mock := mocks.NewLOMSRepoMock(mc)
+				mock.InsertOrderInfoMock.Expect(ctxTx, model.Order{Status: model.NewOrder, User: user}).
+					Return(orderID, nil)
+				mock.InsertOrderItemsMock.Expect(ctxTx, orderID, itemsToBuy).Return(nil)
+				mock.GetStocksMock.When(ctxTx, itemsToBuy[0].SKU).Then(itemStocks[0].stocks, getStocksErr)
+
+				mock.ChangeOrderStatusMock.Expect(ctx, orderID, model.Failed).Return(changeStatusErr)
+
+				return mock
+			},
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Then(tx, nil)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead}).Then(tx, nil)
+				tx.CommitMock.Expect(ctx).Return(nil)
+				tx.RollbackMock.Expect(ctx).Return(nil)
 
 				return mock
 			},
@@ -182,7 +324,7 @@ func TestCreateOrder(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			domain := NewMockDomain(tt.lomsRepoMock(mc), transactor.New(tt.connMockFunc(mc)))
+			domain := NewMockDomain(cfg, tt.lomsRepoMock(mc), transactor.New(tt.DBMockFunc(mc)))
 
 			order, err := domain.CreateOrder(tt.args.ctx, tt.args.user, tt.args.items)
 			require.Equal(t, tt.want, order)

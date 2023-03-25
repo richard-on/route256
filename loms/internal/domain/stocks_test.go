@@ -2,13 +2,15 @@ package domain
 
 import (
 	"context"
+	"testing"
+
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/gojuno/minimock/v3"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain/mocks"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
-	"testing"
 )
 
 func TestStocks(t *testing.T) {
@@ -23,6 +25,7 @@ func TestStocks(t *testing.T) {
 	var (
 		mc  = minimock.NewController(t)
 		ctx = context.Background()
+		cfg = config.Service{MaxPoolWorkers: 5}
 		sku = gofakeit.Uint32()
 
 		stocks = []model.Stock{
@@ -78,7 +81,7 @@ func TestStocks(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			domain := NewMockDomain(tt.lomsRepoMock(mc))
+			domain := NewMockDomain(cfg, tt.lomsRepoMock(mc))
 
 			res, err := domain.Stocks(tt.args.ctx, tt.args.sku)
 			require.Equal(t, tt.want, res)

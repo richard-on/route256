@@ -29,7 +29,7 @@ func (t *Transactor) GetQueryEngine(ctx context.Context) QueryEngine {
 		return tx
 	}
 
-	return t.pool
+	return t.db
 }
 
 func (t *Transactor) GetExecEngine(ctx context.Context) ExecEngine {
@@ -38,5 +38,5 @@ func (t *Transactor) GetExecEngine(ctx context.Context) ExecEngine {
 		return tx
 	}
 
-	return t.pool
+	return t.db
 }

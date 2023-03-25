@@ -8,6 +8,7 @@ import (
 	"github.com/gojuno/minimock/v3"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain/mocks"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/model"
 )
@@ -26,6 +27,7 @@ func TestAddToCart(t *testing.T) {
 	var (
 		mc     = minimock.NewController(t)
 		ctx    = context.Background()
+		cfg    = config.Service{MaxPoolWorkers: 5}
 		userID = gofakeit.Int64()
 		sku    = gofakeit.Uint32()
 		count  = gofakeit.Number(1, 5)
@@ -192,7 +194,7 @@ func TestAddToCart(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			domain := NewMockDomain(tt.checkoutRepoMock(mc), tt.stockCheckerMock(mc))
+			domain := NewMockDomain(cfg, tt.checkoutRepoMock(mc), tt.stockCheckerMock(mc))
 
 			err := domain.AddToCart(tt.args.ctx, tt.args.user, tt.args.item)
 			if tt.err != nil {

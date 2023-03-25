@@ -2,23 +2,25 @@ package domain
 
 import (
 	"context"
+	"testing"
+	"time"
+
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/gojuno/minimock/v3"
 	"github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain/mocks"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/transactor"
 	txMocks "gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/transactor/mocks"
-	"testing"
-	"time"
 )
 
 func TestCancelOrder(t *testing.T) {
 	t.Parallel()
 	type LOMSRepoMockFunc func(mc *minimock.Controller) LOMSRepo
-	type ConnMockFunc func(mc *minimock.Controller) transactor.Conn
+	type DBMockFunc func(mc *minimock.Controller) transactor.DB
 
 	type args struct {
 		ctx     context.Context
@@ -27,9 +29,10 @@ func TestCancelOrder(t *testing.T) {
 
 	var (
 		mc      = minimock.NewController(t)
-		tx      = txMocks.NewTxMock(t)
+		tx      = mocks.NewTxMock(t)
 		ctx     = context.Background()
 		ctxTx   = context.WithValue(ctx, transactor.Key, tx)
+		cfg     = config.Service{MaxPoolWorkers: 5}
 		orderID = int64(gofakeit.Number(1, 1<<31))
 
 		skus   = []int64{int64(gofakeit.Uint32()), int64(gofakeit.Uint32())}
@@ -54,7 +57,7 @@ func TestCancelOrder(t *testing.T) {
 		args         args
 		err          error
 		lomsRepoMock LOMSRepoMockFunc
-		connMockFunc ConnMockFunc
+		DBMockFunc   DBMockFunc
 	}{
 		{
 			name: "Positive",
@@ -74,10 +77,31 @@ func TestCancelOrder(t *testing.T) {
 
 				return mock
 			},
-			connMockFunc: func(mc *minimock.Controller) transactor.Conn {
-				mock := txMocks.NewConnMock(mc)
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
 				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead}).Then(tx, nil)
 				tx.CommitMock.Expect(ctx).Return(nil)
+
+				return mock
+			},
+		},
+		{
+			name: "ErrOrderCancelled",
+			args: args{
+				ctx:     ctx,
+				orderID: orderID,
+			},
+			err: ErrOrderCancelled,
+			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
+				mock := mocks.NewLOMSRepoMock(mc)
+				mock.CancelOrderMock.Expect(ctxTx, orderID).Return(ErrOrderCancelled)
+
+				return mock
+			},
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead}).Then(tx, nil)
+				tx.RollbackMock.Expect(ctx).Return(nil)
 
 				return mock
 			},
@@ -96,8 +120,8 @@ func TestCancelOrder(t *testing.T) {
 
 				return mock
 			},
-			connMockFunc: func(mc *minimock.Controller) transactor.Conn {
-				mock := txMocks.NewConnMock(mc)
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
 				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead}).Then(tx, nil)
 				tx.RollbackMock.Expect(ctx).Return(nil)
 
@@ -121,8 +145,8 @@ func TestCancelOrder(t *testing.T) {
 
 				return mock
 			},
-			connMockFunc: func(mc *minimock.Controller) transactor.Conn {
-				mock := txMocks.NewConnMock(mc)
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
 				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead}).Then(tx, nil)
 				tx.RollbackMock.Expect(ctx).Return(nil)
 
@@ -135,7 +159,7 @@ func TestCancelOrder(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			domain := NewMockDomain(tt.lomsRepoMock(mc), transactor.New(tt.connMockFunc(mc)))
+			domain := NewMockDomain(cfg, tt.lomsRepoMock(mc), transactor.New(tt.DBMockFunc(mc)))
 
 			err := domain.CancelOrder(tt.args.ctx, tt.args.orderID)
 			if tt.err != nil {
@@ -151,7 +175,7 @@ func TestCancelOrder(t *testing.T) {
 func TestCancelUnpaidOrders(t *testing.T) {
 	t.Parallel()
 	type LOMSRepoMockFunc func(mc *minimock.Controller) LOMSRepo
-	type ConnMockFunc func(mc *minimock.Controller) transactor.Conn
+	type DBMockFunc func(mc *minimock.Controller) transactor.DB
 
 	type args struct {
 		ctx            context.Context
@@ -160,13 +184,15 @@ func TestCancelUnpaidOrders(t *testing.T) {
 
 	var (
 		mc             = minimock.NewController(t)
-		tx             = txMocks.NewTxMock(t)
+		tx             = mocks.NewTxMock(t)
 		ctx            = context.Background()
 		ctxTx          = context.WithValue(ctx, transactor.Key, tx)
+		cfg            = config.Service{MaxPoolWorkers: 5}
 		paymentTimeout = 1 * time.Second
 
-		skus   = []int64{int64(gofakeit.Uint32()), int64(gofakeit.Uint32())}
-		stocks = []model.Stock{
+		unpaidOrders = []int64{int64(gofakeit.Number(1, 1<<31)), int64(gofakeit.Number(1, 1<<31))}
+		skus         = []int64{int64(gofakeit.Uint32()), int64(gofakeit.Uint32())}
+		stocks       = []model.Stock{
 			{
 				WarehouseID: int64(gofakeit.Number(1, 1000)),
 				Count:       6,
@@ -177,7 +203,7 @@ func TestCancelUnpaidOrders(t *testing.T) {
 			},
 		}
 
-		unpaidOrders = []int64{int64(gofakeit.Number(1, 1<<31)), int64(gofakeit.Number(1, 1<<31))}
+		listErr = errors.New("list unpaid orders error")
 	)
 
 	t.Cleanup(mc.Finish)
@@ -187,7 +213,7 @@ func TestCancelUnpaidOrders(t *testing.T) {
 		args         args
 		errs         []error
 		lomsRepoMock LOMSRepoMockFunc
-		connMockFunc ConnMockFunc
+		DBMockFunc   DBMockFunc
 	}{
 		{
 			name: "Positive",
@@ -210,10 +236,51 @@ func TestCancelUnpaidOrders(t *testing.T) {
 
 				return mock
 			},
-			connMockFunc: func(mc *minimock.Controller) transactor.Conn {
-				mock := txMocks.NewConnMock(mc)
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
 				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead}).Then(tx, nil)
 				tx.CommitMock.Expect(ctx).Return(nil)
+
+				return mock
+			},
+		},
+		{
+			name: "ErrListUnpaidOrders",
+			args: args{
+				ctx:            ctx,
+				paymentTimeout: paymentTimeout,
+			},
+			errs: []error{listErr},
+			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
+				mock := mocks.NewLOMSRepoMock(mc)
+				mock.ListUnpaidOrdersMock.Expect(ctx, paymentTimeout).Return(nil, listErr)
+
+				return mock
+			},
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				return txMocks.NewDBMock(mc)
+			},
+		},
+		{
+			name: "ErrCancelOrder",
+			args: args{
+				ctx:            ctx,
+				paymentTimeout: paymentTimeout,
+			},
+			errs: []error{ErrOrderCancelled, ErrOrderCancelled},
+			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
+				mock := mocks.NewLOMSRepoMock(mc)
+				mock.ListUnpaidOrdersMock.Expect(ctx, paymentTimeout).Return(unpaidOrders, nil)
+				for i := 0; i < len(unpaidOrders); i++ {
+					mock.CancelOrderMock.When(ctxTx, unpaidOrders[i]).Then(ErrOrderCancelled)
+				}
+
+				return mock
+			},
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
+				mock.BeginTxMock.When(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead}).Then(tx, nil)
+				tx.RollbackMock.Expect(ctx).Return(nil)
 
 				return mock
 			},
@@ -224,7 +291,7 @@ func TestCancelUnpaidOrders(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			domain := NewMockDomain(tt.lomsRepoMock(mc), transactor.New(tt.connMockFunc(mc)))
+			domain := NewMockDomain(cfg, tt.lomsRepoMock(mc), transactor.New(tt.DBMockFunc(mc)))
 
 			errs := domain.CancelUnpaidOrders(tt.args.ctx, tt.args.paymentTimeout)
 			if tt.errs != nil {

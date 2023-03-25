@@ -1,6 +1,6 @@
 package transactor
 
-//go:generate minimock -i Conn -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i DB -o ./mocks/ -s "_minimock.go"
 
 import (
 	"context"
@@ -15,24 +15,24 @@ type txKey string
 const Key = txKey("tx")
 
 type Transactor struct {
-	pool Conn
+	db DB
 }
 
-type Conn interface {
+type DB interface {
 	Begin(context.Context) (pgx.Tx, error)
 	BeginTx(context.Context, pgx.TxOptions) (pgx.Tx, error)
 	Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
 	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
 }
 
-func New(pool Conn) *Transactor {
+func New(pool DB) *Transactor {
 	return &Transactor{
-		pool: pool,
+		db: pool,
 	}
 }
 
 func (t *Transactor) RunReadCommitted(ctx context.Context, f func(txCtx context.Context) error) error {
-	tx, err := t.pool.BeginTx(ctx, pgx.TxOptions{
+	tx, err := t.db.BeginTx(ctx, pgx.TxOptions{
 		IsoLevel: pgx.ReadCommitted,
 	})
 	if err != nil {
@@ -51,7 +51,7 @@ func (t *Transactor) RunReadCommitted(ctx context.Context, f func(txCtx context.
 }
 
 func (t *Transactor) RunRepeatableRead(ctx context.Context, f func(txCtx context.Context) error) error {
-	tx, err := t.pool.BeginTx(ctx, pgx.TxOptions{
+	tx, err := t.db.BeginTx(ctx, pgx.TxOptions{
 		IsoLevel: pgx.RepeatableRead,
 	})
 	if err != nil {
@@ -70,7 +70,7 @@ func (t *Transactor) RunRepeatableRead(ctx context.Context, f func(txCtx context
 }
 
 func (t *Transactor) RunSerializable(ctx context.Context, f func(txCtx context.Context) error) error {
-	tx, err := t.pool.BeginTx(ctx, pgx.TxOptions{
+	tx, err := t.db.BeginTx(ctx, pgx.TxOptions{
 		IsoLevel: pgx.Serializable,
 	})
 	if err != nil {

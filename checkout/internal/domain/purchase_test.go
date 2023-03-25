@@ -8,6 +8,7 @@ import (
 	"github.com/gojuno/minimock/v3"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain/mocks"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/model"
 )
@@ -25,6 +26,7 @@ func TestPurchase(t *testing.T) {
 	var (
 		mc      = minimock.NewController(t)
 		ctx     = context.Background()
+		cfg     = config.Service{MaxPoolWorkers: 5}
 		itemNum = 5
 
 		orderID   int64 = 1
@@ -142,7 +144,7 @@ func TestPurchase(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			domain := NewMockDomain(tt.checkoutRepoMock(mc), tt.orderCreatorMock(mc))
+			domain := NewMockDomain(cfg, tt.checkoutRepoMock(mc), tt.orderCreatorMock(mc))
 
 			got, err := domain.CreateOrder(tt.args.ctx, tt.args.userID)
 			require.Equal(t, tt.want, got)

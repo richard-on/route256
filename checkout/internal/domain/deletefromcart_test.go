@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain/mocks"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/repository/transactor"
@@ -18,7 +19,7 @@ import (
 func TestDeleteFromCart(t *testing.T) {
 	t.Parallel()
 	type checkoutRepoMockFunc func(mc *minimock.Controller) CheckoutRepo
-	type connMockFunc func(mc *minimock.Controller) transactor.Conn
+	type DBMockFunc func(mc *minimock.Controller) transactor.DB
 
 	type args struct {
 		ctx  context.Context
@@ -31,6 +32,7 @@ func TestDeleteFromCart(t *testing.T) {
 		tx     = mocks.NewTxMock(t)
 		ctx    = context.Background()
 		ctxTx  = context.WithValue(ctx, transactor.Key, tx)
+		cfg    = config.Service{MaxPoolWorkers: 5}
 		userID = int64(gofakeit.Number(1, 100000000))
 		sku    = gofakeit.Uint32()
 		count  = gofakeit.Number(2, 5)
@@ -51,7 +53,7 @@ func TestDeleteFromCart(t *testing.T) {
 		args             args
 		err              error
 		checkoutRepoMock checkoutRepoMockFunc
-		connMockFunc     connMockFunc
+		DBMockFunc       DBMockFunc
 	}{
 		{
 			name: "Positive-RecordDeleted",
@@ -68,8 +70,8 @@ func TestDeleteFromCart(t *testing.T) {
 
 				return mock
 			},
-			connMockFunc: func(mc *minimock.Controller) transactor.Conn {
-				mock := txMocks.NewConnMock(mc)
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
 				mock.BeginTxMock.Expect(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Return(tx, nil)
 				tx.CommitMock.Expect(ctx).Return(nil)
 
@@ -93,8 +95,8 @@ func TestDeleteFromCart(t *testing.T) {
 
 				return mock
 			},
-			connMockFunc: func(mc *minimock.Controller) transactor.Conn {
-				mock := txMocks.NewConnMock(mc)
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
 				mock.BeginTxMock.Expect(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Return(tx, nil)
 				tx.CommitMock.Expect(ctx).Return(nil)
 
@@ -116,8 +118,8 @@ func TestDeleteFromCart(t *testing.T) {
 
 				return mock
 			},
-			connMockFunc: func(mc *minimock.Controller) transactor.Conn {
-				mock := txMocks.NewConnMock(mc)
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
 				mock.BeginTxMock.Expect(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Return(tx, nil)
 				tx.RollbackMock.Expect(ctx).Return(nil)
 
@@ -138,8 +140,8 @@ func TestDeleteFromCart(t *testing.T) {
 
 				return mock
 			},
-			connMockFunc: func(mc *minimock.Controller) transactor.Conn {
-				mock := txMocks.NewConnMock(mc)
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
 				mock.BeginTxMock.Expect(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Return(tx, nil)
 				tx.RollbackMock.Expect(ctx).Return(nil)
 
@@ -161,8 +163,8 @@ func TestDeleteFromCart(t *testing.T) {
 
 				return mock
 			},
-			connMockFunc: func(mc *minimock.Controller) transactor.Conn {
-				mock := txMocks.NewConnMock(mc)
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
 				mock.BeginTxMock.Expect(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Return(tx, nil)
 				tx.RollbackMock.Expect(ctx).Return(nil)
 
@@ -184,8 +186,8 @@ func TestDeleteFromCart(t *testing.T) {
 
 				return mock
 			},
-			connMockFunc: func(mc *minimock.Controller) transactor.Conn {
-				mock := txMocks.NewConnMock(mc)
+			DBMockFunc: func(mc *minimock.Controller) transactor.DB {
+				mock := txMocks.NewDBMock(mc)
 				mock.BeginTxMock.Expect(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted}).Return(tx, nil)
 				tx.RollbackMock.Expect(ctx).Return(nil)
 
@@ -199,7 +201,7 @@ func TestDeleteFromCart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			domain := NewMockDomain(tt.checkoutRepoMock(mc), transactor.New(tt.connMockFunc(mc)))
+			domain := NewMockDomain(cfg, tt.checkoutRepoMock(mc), transactor.New(tt.DBMockFunc(mc)))
 
 			err := domain.DeleteFromCart(tt.args.ctx, tt.args.user, tt.args.item)
 			if tt.err != nil {

@@ -2,9 +2,9 @@ package repository
 
 import (
 	"context"
-	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
 
 	sq "github.com/Masterminds/squirrel"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 

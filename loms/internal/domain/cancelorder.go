@@ -3,9 +3,9 @@ package domain
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"time"
 
+	"github.com/pkg/errors"
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/workerpool"
 )
 

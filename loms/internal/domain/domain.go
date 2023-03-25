@@ -1,6 +1,7 @@
 // Package domain provides business-logic for Logistics and Order Management System.
 package domain
 
+//go:generate minimock -i github.com/jackc/pgx/v4.Tx -o ./mocks/tx_minimock.go -n TxMock
 //go:generate minimock -i LOMSRepo -o ./mocks/ -s "_minimock.go"
 
 import (
