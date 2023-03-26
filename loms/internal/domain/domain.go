@@ -1,6 +1,9 @@
 // Package domain provides business-logic for Logistics and Order Management System.
 package domain
 
+//go:generate minimock -i github.com/jackc/pgx/v4.Tx -o ./mocks/tx_minimock.go -n TxMock
+//go:generate minimock -i LOMSRepo -o ./mocks/ -s "_minimock.go"
+
 import (
 	"context"
 	"time"
@@ -67,4 +70,22 @@ func New(config config.Service, repo LOMSRepo, tx Transactor) *Domain {
 		repo,
 		tx,
 	}
+}
+
+// NewMockDomain creates a new mock Domain used for testing.
+func NewMockDomain(opts ...any) *Domain {
+	d := Domain{}
+
+	for _, v := range opts {
+		switch s := v.(type) {
+		case config.Service:
+			d.config = s
+		case LOMSRepo:
+			d.LOMSRepo = s
+		case Transactor:
+			d.Transactor = s
+		}
+	}
+
+	return &d
 }

@@ -5,7 +5,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
-	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/convert"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/schema"
@@ -54,7 +54,7 @@ func (r *Repository) IncreaseStock(ctx context.Context, sku int64, stock model.S
 		return err
 	}
 	if exec.RowsAffected() == 0 {
-		return errors.New("warehouse or sku does not exist")
+		return domain.ErrStockNotExists
 	}
 
 	return nil
@@ -81,7 +81,7 @@ func (r *Repository) DecreaseStock(ctx context.Context, sku int64, stock model.S
 		return err
 	}
 	if exec.RowsAffected() == 0 {
-		return errors.New("warehouse or sku does not exist")
+		return domain.ErrStockNotExists
 	}
 
 	return nil

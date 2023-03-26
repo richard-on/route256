@@ -33,7 +33,7 @@ func (r *Repository) GetCartItems(ctx context.Context, userID int64) ([]model.It
 	}
 
 	if items == nil {
-		return nil, errors.New("cart is empty")
+		return nil, domain.ErrEmptyCart
 	}
 
 	return convert.ToModelItemSlice(items), nil

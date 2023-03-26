@@ -4,7 +4,7 @@ import (
 	"context"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
@@ -31,7 +31,7 @@ func (r *Repository) CancelOrder(ctx context.Context, orderID int64) error {
 		return err
 	}
 	if exec.RowsAffected() == 0 {
-		return errors.New("order does not exist or has already been cancelled")
+		return domain.ErrOrderCancelled
 	}
 
 	return nil

@@ -1,4 +1,9 @@
 
+test-coverage:
+	go test -v ./checkout/... ./loms/... -coverprofile=coverage.out
+	go tool cover -func=./coverage.out | grep "total";
+	go tool cover -html=coverage.out
+
 build-all:
 	cd checkout && make build
 	cd loms && make build

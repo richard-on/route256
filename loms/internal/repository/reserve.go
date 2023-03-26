@@ -5,7 +5,7 @@ import (
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/georgysavva/scany/pgxscan"
-	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/schema"
 )
@@ -28,7 +28,7 @@ func (r *Repository) ReserveItem(ctx context.Context, orderID int64, sku int64, 
 		return err
 	}
 	if exec.RowsAffected() == 0 {
-		return errors.New("warehouse or sku does not exist")
+		return domain.ErrStockNotExists
 	}
 
 	return nil

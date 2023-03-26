@@ -24,19 +24,19 @@ type ExecEngineProvider interface {
 }
 
 func (t *Transactor) GetQueryEngine(ctx context.Context) QueryEngine {
-	tx, ok := ctx.Value(key).(QueryEngine)
+	tx, ok := ctx.Value(Key).(QueryEngine)
 	if ok && tx != nil {
 		return tx
 	}
 
-	return t.pool
+	return t.db
 }
 
 func (t *Transactor) GetExecEngine(ctx context.Context) ExecEngine {
-	tx, ok := ctx.Value(key).(ExecEngine)
+	tx, ok := ctx.Value(Key).(ExecEngine)
 	if ok && tx != nil {
 		return tx
 	}
 
-	return t.pool
+	return t.db
 }

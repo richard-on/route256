@@ -39,6 +39,7 @@ type Pool[In, Out any] struct {
 	results []Result[Out]
 	// closeSignal is a channel used to signal the Pool shutdown.
 	closeSignal chan struct{}
+	closed      bool
 	// accumulateSignal is a channel used to signal the end of result accumulation.
 	accumulateSignal chan struct{}
 	closeOnce        sync.Once
@@ -96,15 +97,20 @@ func (p *Pool[In, Out]) Wait() {
 		close(p.taskGetChan)
 	})
 
-	<-p.closeSignal
+	if !p.closed {
+		<-p.closeSignal
+	}
 }
 
 // StopNow stops accepting new tasks to the Pool
 // while not waiting for already active or enqueued tasks.
 func (p *Pool[In, Out]) StopNow() {
 	p.closeOnce.Do(func() {
-		close(p.taskGetChan)
+		p.closed = true
 	})
+
+	//<-p.closeSignal
+	//close(p.taskGetChan)
 }
 
 // run starts the pool and handles its shutdown.
@@ -120,7 +126,7 @@ func (p *Pool[In, Out]) run(ctx context.Context) {
 	// Spawn maxWorkers number of goroutines.
 	for workerCount < p.maxWorkers {
 		p.wg.Add(1)
-		go worker(ctx, &p.wg, p.taskProcessChan, p.resChan)
+		go worker(ctx, &p.wg, p.taskProcessChan, p.resChan, &p.closed)
 		workerCount++
 	}
 
@@ -156,17 +162,19 @@ func (p *Pool[In, Out]) accumulateResult() {
 }
 
 func worker[In, Out any](ctx context.Context, wg *sync.WaitGroup,
-	taskChan <-chan Task[In, Out], resChan chan<- Result[Out]) {
+	taskChan <-chan Task[In, Out], resChan chan<- Result[Out], closed *bool) {
 
 	for task := range taskChan {
 		select {
 		// if context was cancelled, don't execute the task.
 		case <-ctx.Done():
 		default:
-			// Otherwise, execute task.
-			res, err := task.fn(ctx, task.arg)
-			// And write its result to resChan.
-			resChan <- Result[Out]{res, err}
+			if !*closed {
+				// Otherwise, execute task.
+				res, err := task.fn(ctx, task.arg)
+				// And write its result to resChan.
+				resChan <- Result[Out]{res, err}
+			}
 		}
 	}
 

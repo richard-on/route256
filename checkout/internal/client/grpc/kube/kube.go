@@ -2,12 +2,12 @@ package kube
 
 import (
 	"context"
-	"github.com/pkg/errors"
-	"k8s.io/client-go/rest"
 
+	"github.com/pkg/errors"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 // Client is a wrapper for *kubernetes.Clientset.
