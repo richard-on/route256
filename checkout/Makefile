@@ -8,15 +8,18 @@ PACKAGE=gitlab.ozon.dev/rragusskiy/homework-1/checkout/cmd/app
 RPCNAME=checkout.proto
 PROTOPATH=api/checkout/v1
 RPCPATH=pkg/checkout
+PROTOVER=v1
 BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
-APPVER=0.4.1
+APPVER=0.4.2
 
 all: format build test lint
 
 build: bindir
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-	go build -ldflags="-X main.Version=${APPVER} -X main.Build=${BUILDDATE}" \
- 					   		-o ${BINDIR}/app ${PACKAGE}
+    	go build -ldflags="-X gitlab.ozon.dev/rragusskiy/homework-1/checkout/config.Version=${APPVER} \
+    	 -X gitlab.ozon.dev/rragusskiy/homework-1/checkout/config.Build=${BUILDDATE} \
+    	 -X gitlab.ozon.dev/rragusskiy/homework-1/checkout/config.ProtoVersion=${PROTOVER}" \
+     					   		-o ${BINDIR}/app ${PACKAGE}
 
 test:
 	go test ./...

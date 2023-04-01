@@ -3,6 +3,7 @@ package convert
 
 import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model/outbox"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/schema"
 )
 
@@ -72,4 +73,30 @@ func ToModelStockSlice(stocks []schema.Stock) []model.Stock {
 	}
 
 	return modelStocks
+}
+
+func ToOutboxMessage(msg schema.Message) outbox.Message {
+	if msg.Key != nil {
+		return outbox.Message{
+			ID:      msg.ID,
+			Key:     *msg.Key,
+			Payload: msg.Payload,
+			Status:  outbox.Status(msg.Status),
+		}
+	}
+
+	return outbox.Message{
+		ID:      msg.ID,
+		Payload: msg.Payload,
+		Status:  outbox.Status(msg.Status),
+	}
+}
+
+func ToOutboxMessageSlice(messages []schema.Message) []outbox.Message {
+	outboxMessages := make([]outbox.Message, 0, len(messages))
+	for _, msg := range messages {
+		outboxMessages = append(outboxMessages, ToOutboxMessage(msg))
+	}
+
+	return outboxMessages
 }

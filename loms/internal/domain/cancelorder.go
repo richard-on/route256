@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/workerpool"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
 var (
@@ -32,6 +33,11 @@ func (d *Domain) CancelOrder(ctx context.Context, orderID int64) error {
 			if err != nil {
 				return err
 			}
+		}
+
+		err = d.CreateStatusMessage(ctx, orderID, model.Cancelled)
+		if err != nil {
+			return err
 		}
 
 		return nil

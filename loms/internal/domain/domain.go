@@ -3,6 +3,8 @@ package domain
 
 //go:generate minimock -i github.com/jackc/pgx/v4.Tx -o ./mocks/tx_minimock.go -n TxMock
 //go:generate minimock -i LOMSRepo -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i OutboxRepo -o ./mocks/ -s "_minimock.go"
+//go:generate minimock -i StatusSender -o ./mocks/ -s "_minimock.go"
 
 import (
 	"context"
@@ -10,6 +12,7 @@ import (
 
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model/outbox"
 )
 
 // Transactor is the interface that provides abstraction for different transaction isolation levels.
@@ -53,6 +56,22 @@ type LOMSRepo interface {
 
 	ReserveItem(ctx context.Context, orderID int64, sku int64, stock model.Stock) error
 	RemoveItemsFromReserved(ctx context.Context, orderID int64) ([]int64, []model.Stock, error)
+
+	OutboxRepo
+}
+
+// OutboxRepo is the interface that provides methods used in LOMS Outbox.
+type OutboxRepo interface {
+	AddMessageWithKey(ctx context.Context, key string, payload []byte) error
+	AddMessageWithoutKey(ctx context.Context, payload []byte) error
+	UpdateMessageStatus(ctx context.Context, id int64, status outbox.Status) error
+	DeleteMessage(ctx context.Context, id int64) error
+	ListUnsent(ctx context.Context) ([]outbox.Message, error)
+}
+
+// StatusSender is the interface that provides methods used to send a status update message to the broker.
+type StatusSender interface {
+	SendWithKey(id int64, key string, message []byte)
 }
 
 // Domain represents business logic of Logistics and Order Management System.
@@ -61,14 +80,16 @@ type Domain struct {
 	config config.Service
 	LOMSRepo
 	Transactor
+	StatusSender
 }
 
 // New creates a new Domain.
-func New(config config.Service, repo LOMSRepo, tx Transactor) *Domain {
+func New(config config.Service, repo LOMSRepo, tx Transactor, sender StatusSender) *Domain {
 	return &Domain{
 		config,
 		repo,
 		tx,
+		sender,
 	}
 }
 

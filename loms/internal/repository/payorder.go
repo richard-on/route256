@@ -4,7 +4,7 @@ import (
 	"context"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
@@ -28,7 +28,7 @@ func (r *Repository) PayOrder(ctx context.Context, orderID int64) error {
 		return err
 	}
 	if exec.RowsAffected() == 0 {
-		return errors.New("order does not exist or have already been paid")
+		return domain.ErrNotExistsOrPaid
 	}
 
 	return nil

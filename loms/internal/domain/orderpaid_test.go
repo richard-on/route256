@@ -66,6 +66,7 @@ func TestOrderPaid(t *testing.T) {
 			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
 				mock := mocks.NewLOMSRepoMock(mc)
 				mock.PayOrderMock.Expect(ctxTx, orderID).Return(nil)
+				mock.AddMessageWithKeyMock.Return(nil)
 				mock.RemoveItemsFromReservedMock.Expect(ctxTx, orderID).Return(nil, nil, nil)
 				return mock
 			},

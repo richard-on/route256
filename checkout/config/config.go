@@ -9,6 +9,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var (
+	Version      string // Version of this app.
+	Build        string // Build date and time.
+	ProtoVersion string // ProtoVersion is the protobuf contract version.
+)
+
 type Config struct {
 	Service             `yaml:"service"`
 	Log                 `yaml:"log"`
