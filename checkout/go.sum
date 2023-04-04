@@ -256,8 +256,8 @@ github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/zenazn/goji v0.9.0/go.mod h1:7S9M489iMyHBNxwZnk9/EHS098H4/F6TATF2mIxtB1Q=
-gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230322154410-776eb9dfaa07 h1:1wLFhGbaowmjMWW/0lEklP7qhn+lTyFTw/XnJuyJB1Q=
-gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230322154410-776eb9dfaa07/go.mod h1:xaAQgxXvZm4TyZyocEsvAJO68SntkxXVwN0h8/WsRDI=
+gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230326223751-b2f9ac3c1b7f h1:hoxu/lKzpDTwPtTHR7EAocVW6BNLbBemWJwHJfGpYTY=
+gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230326223751-b2f9ac3c1b7f/go.mod h1:xaAQgxXvZm4TyZyocEsvAJO68SntkxXVwN0h8/WsRDI=
 gitlab.ozon.dev/rragusskiy/homework-1/loms v0.0.0-20230228162908-78bf84805ffb h1:RyTWYwK54Ahp3lCTC5Mvls0MoHZOGmBAUMy3QdEoYT0=
 gitlab.ozon.dev/rragusskiy/homework-1/loms v0.0.0-20230228162908-78bf84805ffb/go.mod h1:D7y+CZhaNHjrSE/HzIbCiWNRkMIP3AFEBXLkr7TAAWo=
 gitlab.ozon.dev/rragusskiy/homework-1/productservice v0.0.0-20230228162908-78bf84805ffb h1:on9N5+ZGimOEe0LdA3wVLXHw1JDGhzK6WGBGyBIg2ZQ=

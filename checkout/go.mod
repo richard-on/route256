@@ -13,7 +13,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
 	github.com/stretchr/testify v1.8.1
-	gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230322154410-776eb9dfaa07
+	gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230326223751-b2f9ac3c1b7f
 	gitlab.ozon.dev/rragusskiy/homework-1/loms v0.0.0-20230228162908-78bf84805ffb
 	gitlab.ozon.dev/rragusskiy/homework-1/productservice v0.0.0-20230228162908-78bf84805ffb
 	go.uber.org/multierr v1.5.0

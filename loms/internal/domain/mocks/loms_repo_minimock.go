@@ -13,11 +13,24 @@ import (
 
 	"github.com/gojuno/minimock/v3"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model/outbox"
 )
 
 // LOMSRepoMock implements domain.LOMSRepo
 type LOMSRepoMock struct {
 	t minimock.Tester
+
+	funcAddMessageWithKey          func(ctx context.Context, key string, payload []byte) (err error)
+	inspectFuncAddMessageWithKey   func(ctx context.Context, key string, payload []byte)
+	afterAddMessageWithKeyCounter  uint64
+	beforeAddMessageWithKeyCounter uint64
+	AddMessageWithKeyMock          mLOMSRepoMockAddMessageWithKey
+
+	funcAddMessageWithoutKey          func(ctx context.Context, payload []byte) (err error)
+	inspectFuncAddMessageWithoutKey   func(ctx context.Context, payload []byte)
+	afterAddMessageWithoutKeyCounter  uint64
+	beforeAddMessageWithoutKeyCounter uint64
+	AddMessageWithoutKeyMock          mLOMSRepoMockAddMessageWithoutKey
 
 	funcCancelOrder          func(ctx context.Context, orderID int64) (err error)
 	inspectFuncCancelOrder   func(ctx context.Context, orderID int64)
@@ -36,6 +49,12 @@ type LOMSRepoMock struct {
 	afterDecreaseStockCounter  uint64
 	beforeDecreaseStockCounter uint64
 	DecreaseStockMock          mLOMSRepoMockDecreaseStock
+
+	funcDeleteMessage          func(ctx context.Context, id int64) (err error)
+	inspectFuncDeleteMessage   func(ctx context.Context, id int64)
+	afterDeleteMessageCounter  uint64
+	beforeDeleteMessageCounter uint64
+	DeleteMessageMock          mLOMSRepoMockDeleteMessage
 
 	funcGetStocks          func(ctx context.Context, sku uint32) (sa1 []model.Stock, err error)
 	inspectFuncGetStocks   func(ctx context.Context, sku uint32)
@@ -79,6 +98,12 @@ type LOMSRepoMock struct {
 	beforeListUnpaidOrdersCounter uint64
 	ListUnpaidOrdersMock          mLOMSRepoMockListUnpaidOrders
 
+	funcListUnsent          func(ctx context.Context) (ma1 []outbox.Message, err error)
+	inspectFuncListUnsent   func(ctx context.Context)
+	afterListUnsentCounter  uint64
+	beforeListUnsentCounter uint64
+	ListUnsentMock          mLOMSRepoMockListUnsent
+
 	funcPayOrder          func(ctx context.Context, orderID int64) (err error)
 	inspectFuncPayOrder   func(ctx context.Context, orderID int64)
 	afterPayOrderCounter  uint64
@@ -96,6 +121,12 @@ type LOMSRepoMock struct {
 	afterReserveItemCounter  uint64
 	beforeReserveItemCounter uint64
 	ReserveItemMock          mLOMSRepoMockReserveItem
+
+	funcUpdateMessageStatus          func(ctx context.Context, id int64, status outbox.Status) (err error)
+	inspectFuncUpdateMessageStatus   func(ctx context.Context, id int64, status outbox.Status)
+	afterUpdateMessageStatusCounter  uint64
+	beforeUpdateMessageStatusCounter uint64
+	UpdateMessageStatusMock          mLOMSRepoMockUpdateMessageStatus
 }
 
 // NewLOMSRepoMock returns a mock for domain.LOMSRepo
@@ -105,6 +136,12 @@ func NewLOMSRepoMock(t minimock.Tester) *LOMSRepoMock {
 		controller.RegisterMocker(m)
 	}
 
+	m.AddMessageWithKeyMock = mLOMSRepoMockAddMessageWithKey{mock: m}
+	m.AddMessageWithKeyMock.callArgs = []*LOMSRepoMockAddMessageWithKeyParams{}
+
+	m.AddMessageWithoutKeyMock = mLOMSRepoMockAddMessageWithoutKey{mock: m}
+	m.AddMessageWithoutKeyMock.callArgs = []*LOMSRepoMockAddMessageWithoutKeyParams{}
+
 	m.CancelOrderMock = mLOMSRepoMockCancelOrder{mock: m}
 	m.CancelOrderMock.callArgs = []*LOMSRepoMockCancelOrderParams{}
 
@@ -113,6 +150,9 @@ func NewLOMSRepoMock(t minimock.Tester) *LOMSRepoMock {
 
 	m.DecreaseStockMock = mLOMSRepoMockDecreaseStock{mock: m}
 	m.DecreaseStockMock.callArgs = []*LOMSRepoMockDecreaseStockParams{}
+
+	m.DeleteMessageMock = mLOMSRepoMockDeleteMessage{mock: m}
+	m.DeleteMessageMock.callArgs = []*LOMSRepoMockDeleteMessageParams{}
 
 	m.GetStocksMock = mLOMSRepoMockGetStocks{mock: m}
 	m.GetStocksMock.callArgs = []*LOMSRepoMockGetStocksParams{}
@@ -135,6 +175,9 @@ func NewLOMSRepoMock(t minimock.Tester) *LOMSRepoMock {
 	m.ListUnpaidOrdersMock = mLOMSRepoMockListUnpaidOrders{mock: m}
 	m.ListUnpaidOrdersMock.callArgs = []*LOMSRepoMockListUnpaidOrdersParams{}
 
+	m.ListUnsentMock = mLOMSRepoMockListUnsent{mock: m}
+	m.ListUnsentMock.callArgs = []*LOMSRepoMockListUnsentParams{}
+
 	m.PayOrderMock = mLOMSRepoMockPayOrder{mock: m}
 	m.PayOrderMock.callArgs = []*LOMSRepoMockPayOrderParams{}
 
@@ -144,7 +187,443 @@ func NewLOMSRepoMock(t minimock.Tester) *LOMSRepoMock {
 	m.ReserveItemMock = mLOMSRepoMockReserveItem{mock: m}
 	m.ReserveItemMock.callArgs = []*LOMSRepoMockReserveItemParams{}
 
+	m.UpdateMessageStatusMock = mLOMSRepoMockUpdateMessageStatus{mock: m}
+	m.UpdateMessageStatusMock.callArgs = []*LOMSRepoMockUpdateMessageStatusParams{}
+
 	return m
+}
+
+type mLOMSRepoMockAddMessageWithKey struct {
+	mock               *LOMSRepoMock
+	defaultExpectation *LOMSRepoMockAddMessageWithKeyExpectation
+	expectations       []*LOMSRepoMockAddMessageWithKeyExpectation
+
+	callArgs []*LOMSRepoMockAddMessageWithKeyParams
+	mutex    sync.RWMutex
+}
+
+// LOMSRepoMockAddMessageWithKeyExpectation specifies expectation struct of the LOMSRepo.AddMessageWithKey
+type LOMSRepoMockAddMessageWithKeyExpectation struct {
+	mock    *LOMSRepoMock
+	params  *LOMSRepoMockAddMessageWithKeyParams
+	results *LOMSRepoMockAddMessageWithKeyResults
+	Counter uint64
+}
+
+// LOMSRepoMockAddMessageWithKeyParams contains parameters of the LOMSRepo.AddMessageWithKey
+type LOMSRepoMockAddMessageWithKeyParams struct {
+	ctx     context.Context
+	key     string
+	payload []byte
+}
+
+// LOMSRepoMockAddMessageWithKeyResults contains results of the LOMSRepo.AddMessageWithKey
+type LOMSRepoMockAddMessageWithKeyResults struct {
+	err error
+}
+
+// Expect sets up expected params for LOMSRepo.AddMessageWithKey
+func (mmAddMessageWithKey *mLOMSRepoMockAddMessageWithKey) Expect(ctx context.Context, key string, payload []byte) *mLOMSRepoMockAddMessageWithKey {
+	if mmAddMessageWithKey.mock.funcAddMessageWithKey != nil {
+		mmAddMessageWithKey.mock.t.Fatalf("LOMSRepoMock.AddMessageWithKey mock is already set by Set")
+	}
+
+	if mmAddMessageWithKey.defaultExpectation == nil {
+		mmAddMessageWithKey.defaultExpectation = &LOMSRepoMockAddMessageWithKeyExpectation{}
+	}
+
+	mmAddMessageWithKey.defaultExpectation.params = &LOMSRepoMockAddMessageWithKeyParams{ctx, key, payload}
+	for _, e := range mmAddMessageWithKey.expectations {
+		if minimock.Equal(e.params, mmAddMessageWithKey.defaultExpectation.params) {
+			mmAddMessageWithKey.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmAddMessageWithKey.defaultExpectation.params)
+		}
+	}
+
+	return mmAddMessageWithKey
+}
+
+// Inspect accepts an inspector function that has same arguments as the LOMSRepo.AddMessageWithKey
+func (mmAddMessageWithKey *mLOMSRepoMockAddMessageWithKey) Inspect(f func(ctx context.Context, key string, payload []byte)) *mLOMSRepoMockAddMessageWithKey {
+	if mmAddMessageWithKey.mock.inspectFuncAddMessageWithKey != nil {
+		mmAddMessageWithKey.mock.t.Fatalf("Inspect function is already set for LOMSRepoMock.AddMessageWithKey")
+	}
+
+	mmAddMessageWithKey.mock.inspectFuncAddMessageWithKey = f
+
+	return mmAddMessageWithKey
+}
+
+// Return sets up results that will be returned by LOMSRepo.AddMessageWithKey
+func (mmAddMessageWithKey *mLOMSRepoMockAddMessageWithKey) Return(err error) *LOMSRepoMock {
+	if mmAddMessageWithKey.mock.funcAddMessageWithKey != nil {
+		mmAddMessageWithKey.mock.t.Fatalf("LOMSRepoMock.AddMessageWithKey mock is already set by Set")
+	}
+
+	if mmAddMessageWithKey.defaultExpectation == nil {
+		mmAddMessageWithKey.defaultExpectation = &LOMSRepoMockAddMessageWithKeyExpectation{mock: mmAddMessageWithKey.mock}
+	}
+	mmAddMessageWithKey.defaultExpectation.results = &LOMSRepoMockAddMessageWithKeyResults{err}
+	return mmAddMessageWithKey.mock
+}
+
+// Set uses given function f to mock the LOMSRepo.AddMessageWithKey method
+func (mmAddMessageWithKey *mLOMSRepoMockAddMessageWithKey) Set(f func(ctx context.Context, key string, payload []byte) (err error)) *LOMSRepoMock {
+	if mmAddMessageWithKey.defaultExpectation != nil {
+		mmAddMessageWithKey.mock.t.Fatalf("Default expectation is already set for the LOMSRepo.AddMessageWithKey method")
+	}
+
+	if len(mmAddMessageWithKey.expectations) > 0 {
+		mmAddMessageWithKey.mock.t.Fatalf("Some expectations are already set for the LOMSRepo.AddMessageWithKey method")
+	}
+
+	mmAddMessageWithKey.mock.funcAddMessageWithKey = f
+	return mmAddMessageWithKey.mock
+}
+
+// When sets expectation for the LOMSRepo.AddMessageWithKey which will trigger the result defined by the following
+// Then helper
+func (mmAddMessageWithKey *mLOMSRepoMockAddMessageWithKey) When(ctx context.Context, key string, payload []byte) *LOMSRepoMockAddMessageWithKeyExpectation {
+	if mmAddMessageWithKey.mock.funcAddMessageWithKey != nil {
+		mmAddMessageWithKey.mock.t.Fatalf("LOMSRepoMock.AddMessageWithKey mock is already set by Set")
+	}
+
+	expectation := &LOMSRepoMockAddMessageWithKeyExpectation{
+		mock:   mmAddMessageWithKey.mock,
+		params: &LOMSRepoMockAddMessageWithKeyParams{ctx, key, payload},
+	}
+	mmAddMessageWithKey.expectations = append(mmAddMessageWithKey.expectations, expectation)
+	return expectation
+}
+
+// Then sets up LOMSRepo.AddMessageWithKey return parameters for the expectation previously defined by the When method
+func (e *LOMSRepoMockAddMessageWithKeyExpectation) Then(err error) *LOMSRepoMock {
+	e.results = &LOMSRepoMockAddMessageWithKeyResults{err}
+	return e.mock
+}
+
+// AddMessageWithKey implements domain.LOMSRepo
+func (mmAddMessageWithKey *LOMSRepoMock) AddMessageWithKey(ctx context.Context, key string, payload []byte) (err error) {
+	mm_atomic.AddUint64(&mmAddMessageWithKey.beforeAddMessageWithKeyCounter, 1)
+	defer mm_atomic.AddUint64(&mmAddMessageWithKey.afterAddMessageWithKeyCounter, 1)
+
+	if mmAddMessageWithKey.inspectFuncAddMessageWithKey != nil {
+		mmAddMessageWithKey.inspectFuncAddMessageWithKey(ctx, key, payload)
+	}
+
+	mm_params := &LOMSRepoMockAddMessageWithKeyParams{ctx, key, payload}
+
+	// Record call args
+	mmAddMessageWithKey.AddMessageWithKeyMock.mutex.Lock()
+	mmAddMessageWithKey.AddMessageWithKeyMock.callArgs = append(mmAddMessageWithKey.AddMessageWithKeyMock.callArgs, mm_params)
+	mmAddMessageWithKey.AddMessageWithKeyMock.mutex.Unlock()
+
+	for _, e := range mmAddMessageWithKey.AddMessageWithKeyMock.expectations {
+		if minimock.Equal(e.params, mm_params) {
+			mm_atomic.AddUint64(&e.Counter, 1)
+			return e.results.err
+		}
+	}
+
+	if mmAddMessageWithKey.AddMessageWithKeyMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmAddMessageWithKey.AddMessageWithKeyMock.defaultExpectation.Counter, 1)
+		mm_want := mmAddMessageWithKey.AddMessageWithKeyMock.defaultExpectation.params
+		mm_got := LOMSRepoMockAddMessageWithKeyParams{ctx, key, payload}
+		if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
+			mmAddMessageWithKey.t.Errorf("LOMSRepoMock.AddMessageWithKey got unexpected parameters, want: %#v, got: %#v%s\n", *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+		}
+
+		mm_results := mmAddMessageWithKey.AddMessageWithKeyMock.defaultExpectation.results
+		if mm_results == nil {
+			mmAddMessageWithKey.t.Fatal("No results are set for the LOMSRepoMock.AddMessageWithKey")
+		}
+		return (*mm_results).err
+	}
+	if mmAddMessageWithKey.funcAddMessageWithKey != nil {
+		return mmAddMessageWithKey.funcAddMessageWithKey(ctx, key, payload)
+	}
+	mmAddMessageWithKey.t.Fatalf("Unexpected call to LOMSRepoMock.AddMessageWithKey. %v %v %v", ctx, key, payload)
+	return
+}
+
+// AddMessageWithKeyAfterCounter returns a count of finished LOMSRepoMock.AddMessageWithKey invocations
+func (mmAddMessageWithKey *LOMSRepoMock) AddMessageWithKeyAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmAddMessageWithKey.afterAddMessageWithKeyCounter)
+}
+
+// AddMessageWithKeyBeforeCounter returns a count of LOMSRepoMock.AddMessageWithKey invocations
+func (mmAddMessageWithKey *LOMSRepoMock) AddMessageWithKeyBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmAddMessageWithKey.beforeAddMessageWithKeyCounter)
+}
+
+// Calls returns a list of arguments used in each call to LOMSRepoMock.AddMessageWithKey.
+// The list is in the same order as the calls were made (i.e. recent calls have a higher index)
+func (mmAddMessageWithKey *mLOMSRepoMockAddMessageWithKey) Calls() []*LOMSRepoMockAddMessageWithKeyParams {
+	mmAddMessageWithKey.mutex.RLock()
+
+	argCopy := make([]*LOMSRepoMockAddMessageWithKeyParams, len(mmAddMessageWithKey.callArgs))
+	copy(argCopy, mmAddMessageWithKey.callArgs)
+
+	mmAddMessageWithKey.mutex.RUnlock()
+
+	return argCopy
+}
+
+// MinimockAddMessageWithKeyDone returns true if the count of the AddMessageWithKey invocations corresponds
+// the number of defined expectations
+func (m *LOMSRepoMock) MinimockAddMessageWithKeyDone() bool {
+	for _, e := range m.AddMessageWithKeyMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			return false
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.AddMessageWithKeyMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterAddMessageWithKeyCounter) < 1 {
+		return false
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcAddMessageWithKey != nil && mm_atomic.LoadUint64(&m.afterAddMessageWithKeyCounter) < 1 {
+		return false
+	}
+	return true
+}
+
+// MinimockAddMessageWithKeyInspect logs each unmet expectation
+func (m *LOMSRepoMock) MinimockAddMessageWithKeyInspect() {
+	for _, e := range m.AddMessageWithKeyMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			m.t.Errorf("Expected call to LOMSRepoMock.AddMessageWithKey with params: %#v", *e.params)
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.AddMessageWithKeyMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterAddMessageWithKeyCounter) < 1 {
+		if m.AddMessageWithKeyMock.defaultExpectation.params == nil {
+			m.t.Error("Expected call to LOMSRepoMock.AddMessageWithKey")
+		} else {
+			m.t.Errorf("Expected call to LOMSRepoMock.AddMessageWithKey with params: %#v", *m.AddMessageWithKeyMock.defaultExpectation.params)
+		}
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcAddMessageWithKey != nil && mm_atomic.LoadUint64(&m.afterAddMessageWithKeyCounter) < 1 {
+		m.t.Error("Expected call to LOMSRepoMock.AddMessageWithKey")
+	}
+}
+
+type mLOMSRepoMockAddMessageWithoutKey struct {
+	mock               *LOMSRepoMock
+	defaultExpectation *LOMSRepoMockAddMessageWithoutKeyExpectation
+	expectations       []*LOMSRepoMockAddMessageWithoutKeyExpectation
+
+	callArgs []*LOMSRepoMockAddMessageWithoutKeyParams
+	mutex    sync.RWMutex
+}
+
+// LOMSRepoMockAddMessageWithoutKeyExpectation specifies expectation struct of the LOMSRepo.AddMessageWithoutKey
+type LOMSRepoMockAddMessageWithoutKeyExpectation struct {
+	mock    *LOMSRepoMock
+	params  *LOMSRepoMockAddMessageWithoutKeyParams
+	results *LOMSRepoMockAddMessageWithoutKeyResults
+	Counter uint64
+}
+
+// LOMSRepoMockAddMessageWithoutKeyParams contains parameters of the LOMSRepo.AddMessageWithoutKey
+type LOMSRepoMockAddMessageWithoutKeyParams struct {
+	ctx     context.Context
+	payload []byte
+}
+
+// LOMSRepoMockAddMessageWithoutKeyResults contains results of the LOMSRepo.AddMessageWithoutKey
+type LOMSRepoMockAddMessageWithoutKeyResults struct {
+	err error
+}
+
+// Expect sets up expected params for LOMSRepo.AddMessageWithoutKey
+func (mmAddMessageWithoutKey *mLOMSRepoMockAddMessageWithoutKey) Expect(ctx context.Context, payload []byte) *mLOMSRepoMockAddMessageWithoutKey {
+	if mmAddMessageWithoutKey.mock.funcAddMessageWithoutKey != nil {
+		mmAddMessageWithoutKey.mock.t.Fatalf("LOMSRepoMock.AddMessageWithoutKey mock is already set by Set")
+	}
+
+	if mmAddMessageWithoutKey.defaultExpectation == nil {
+		mmAddMessageWithoutKey.defaultExpectation = &LOMSRepoMockAddMessageWithoutKeyExpectation{}
+	}
+
+	mmAddMessageWithoutKey.defaultExpectation.params = &LOMSRepoMockAddMessageWithoutKeyParams{ctx, payload}
+	for _, e := range mmAddMessageWithoutKey.expectations {
+		if minimock.Equal(e.params, mmAddMessageWithoutKey.defaultExpectation.params) {
+			mmAddMessageWithoutKey.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmAddMessageWithoutKey.defaultExpectation.params)
+		}
+	}
+
+	return mmAddMessageWithoutKey
+}
+
+// Inspect accepts an inspector function that has same arguments as the LOMSRepo.AddMessageWithoutKey
+func (mmAddMessageWithoutKey *mLOMSRepoMockAddMessageWithoutKey) Inspect(f func(ctx context.Context, payload []byte)) *mLOMSRepoMockAddMessageWithoutKey {
+	if mmAddMessageWithoutKey.mock.inspectFuncAddMessageWithoutKey != nil {
+		mmAddMessageWithoutKey.mock.t.Fatalf("Inspect function is already set for LOMSRepoMock.AddMessageWithoutKey")
+	}
+
+	mmAddMessageWithoutKey.mock.inspectFuncAddMessageWithoutKey = f
+
+	return mmAddMessageWithoutKey
+}
+
+// Return sets up results that will be returned by LOMSRepo.AddMessageWithoutKey
+func (mmAddMessageWithoutKey *mLOMSRepoMockAddMessageWithoutKey) Return(err error) *LOMSRepoMock {
+	if mmAddMessageWithoutKey.mock.funcAddMessageWithoutKey != nil {
+		mmAddMessageWithoutKey.mock.t.Fatalf("LOMSRepoMock.AddMessageWithoutKey mock is already set by Set")
+	}
+
+	if mmAddMessageWithoutKey.defaultExpectation == nil {
+		mmAddMessageWithoutKey.defaultExpectation = &LOMSRepoMockAddMessageWithoutKeyExpectation{mock: mmAddMessageWithoutKey.mock}
+	}
+	mmAddMessageWithoutKey.defaultExpectation.results = &LOMSRepoMockAddMessageWithoutKeyResults{err}
+	return mmAddMessageWithoutKey.mock
+}
+
+// Set uses given function f to mock the LOMSRepo.AddMessageWithoutKey method
+func (mmAddMessageWithoutKey *mLOMSRepoMockAddMessageWithoutKey) Set(f func(ctx context.Context, payload []byte) (err error)) *LOMSRepoMock {
+	if mmAddMessageWithoutKey.defaultExpectation != nil {
+		mmAddMessageWithoutKey.mock.t.Fatalf("Default expectation is already set for the LOMSRepo.AddMessageWithoutKey method")
+	}
+
+	if len(mmAddMessageWithoutKey.expectations) > 0 {
+		mmAddMessageWithoutKey.mock.t.Fatalf("Some expectations are already set for the LOMSRepo.AddMessageWithoutKey method")
+	}
+
+	mmAddMessageWithoutKey.mock.funcAddMessageWithoutKey = f
+	return mmAddMessageWithoutKey.mock
+}
+
+// When sets expectation for the LOMSRepo.AddMessageWithoutKey which will trigger the result defined by the following
+// Then helper
+func (mmAddMessageWithoutKey *mLOMSRepoMockAddMessageWithoutKey) When(ctx context.Context, payload []byte) *LOMSRepoMockAddMessageWithoutKeyExpectation {
+	if mmAddMessageWithoutKey.mock.funcAddMessageWithoutKey != nil {
+		mmAddMessageWithoutKey.mock.t.Fatalf("LOMSRepoMock.AddMessageWithoutKey mock is already set by Set")
+	}
+
+	expectation := &LOMSRepoMockAddMessageWithoutKeyExpectation{
+		mock:   mmAddMessageWithoutKey.mock,
+		params: &LOMSRepoMockAddMessageWithoutKeyParams{ctx, payload},
+	}
+	mmAddMessageWithoutKey.expectations = append(mmAddMessageWithoutKey.expectations, expectation)
+	return expectation
+}
+
+// Then sets up LOMSRepo.AddMessageWithoutKey return parameters for the expectation previously defined by the When method
+func (e *LOMSRepoMockAddMessageWithoutKeyExpectation) Then(err error) *LOMSRepoMock {
+	e.results = &LOMSRepoMockAddMessageWithoutKeyResults{err}
+	return e.mock
+}
+
+// AddMessageWithoutKey implements domain.LOMSRepo
+func (mmAddMessageWithoutKey *LOMSRepoMock) AddMessageWithoutKey(ctx context.Context, payload []byte) (err error) {
+	mm_atomic.AddUint64(&mmAddMessageWithoutKey.beforeAddMessageWithoutKeyCounter, 1)
+	defer mm_atomic.AddUint64(&mmAddMessageWithoutKey.afterAddMessageWithoutKeyCounter, 1)
+
+	if mmAddMessageWithoutKey.inspectFuncAddMessageWithoutKey != nil {
+		mmAddMessageWithoutKey.inspectFuncAddMessageWithoutKey(ctx, payload)
+	}
+
+	mm_params := &LOMSRepoMockAddMessageWithoutKeyParams{ctx, payload}
+
+	// Record call args
+	mmAddMessageWithoutKey.AddMessageWithoutKeyMock.mutex.Lock()
+	mmAddMessageWithoutKey.AddMessageWithoutKeyMock.callArgs = append(mmAddMessageWithoutKey.AddMessageWithoutKeyMock.callArgs, mm_params)
+	mmAddMessageWithoutKey.AddMessageWithoutKeyMock.mutex.Unlock()
+
+	for _, e := range mmAddMessageWithoutKey.AddMessageWithoutKeyMock.expectations {
+		if minimock.Equal(e.params, mm_params) {
+			mm_atomic.AddUint64(&e.Counter, 1)
+			return e.results.err
+		}
+	}
+
+	if mmAddMessageWithoutKey.AddMessageWithoutKeyMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmAddMessageWithoutKey.AddMessageWithoutKeyMock.defaultExpectation.Counter, 1)
+		mm_want := mmAddMessageWithoutKey.AddMessageWithoutKeyMock.defaultExpectation.params
+		mm_got := LOMSRepoMockAddMessageWithoutKeyParams{ctx, payload}
+		if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
+			mmAddMessageWithoutKey.t.Errorf("LOMSRepoMock.AddMessageWithoutKey got unexpected parameters, want: %#v, got: %#v%s\n", *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+		}
+
+		mm_results := mmAddMessageWithoutKey.AddMessageWithoutKeyMock.defaultExpectation.results
+		if mm_results == nil {
+			mmAddMessageWithoutKey.t.Fatal("No results are set for the LOMSRepoMock.AddMessageWithoutKey")
+		}
+		return (*mm_results).err
+	}
+	if mmAddMessageWithoutKey.funcAddMessageWithoutKey != nil {
+		return mmAddMessageWithoutKey.funcAddMessageWithoutKey(ctx, payload)
+	}
+	mmAddMessageWithoutKey.t.Fatalf("Unexpected call to LOMSRepoMock.AddMessageWithoutKey. %v %v", ctx, payload)
+	return
+}
+
+// AddMessageWithoutKeyAfterCounter returns a count of finished LOMSRepoMock.AddMessageWithoutKey invocations
+func (mmAddMessageWithoutKey *LOMSRepoMock) AddMessageWithoutKeyAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmAddMessageWithoutKey.afterAddMessageWithoutKeyCounter)
+}
+
+// AddMessageWithoutKeyBeforeCounter returns a count of LOMSRepoMock.AddMessageWithoutKey invocations
+func (mmAddMessageWithoutKey *LOMSRepoMock) AddMessageWithoutKeyBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmAddMessageWithoutKey.beforeAddMessageWithoutKeyCounter)
+}
+
+// Calls returns a list of arguments used in each call to LOMSRepoMock.AddMessageWithoutKey.
+// The list is in the same order as the calls were made (i.e. recent calls have a higher index)
+func (mmAddMessageWithoutKey *mLOMSRepoMockAddMessageWithoutKey) Calls() []*LOMSRepoMockAddMessageWithoutKeyParams {
+	mmAddMessageWithoutKey.mutex.RLock()
+
+	argCopy := make([]*LOMSRepoMockAddMessageWithoutKeyParams, len(mmAddMessageWithoutKey.callArgs))
+	copy(argCopy, mmAddMessageWithoutKey.callArgs)
+
+	mmAddMessageWithoutKey.mutex.RUnlock()
+
+	return argCopy
+}
+
+// MinimockAddMessageWithoutKeyDone returns true if the count of the AddMessageWithoutKey invocations corresponds
+// the number of defined expectations
+func (m *LOMSRepoMock) MinimockAddMessageWithoutKeyDone() bool {
+	for _, e := range m.AddMessageWithoutKeyMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			return false
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.AddMessageWithoutKeyMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterAddMessageWithoutKeyCounter) < 1 {
+		return false
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcAddMessageWithoutKey != nil && mm_atomic.LoadUint64(&m.afterAddMessageWithoutKeyCounter) < 1 {
+		return false
+	}
+	return true
+}
+
+// MinimockAddMessageWithoutKeyInspect logs each unmet expectation
+func (m *LOMSRepoMock) MinimockAddMessageWithoutKeyInspect() {
+	for _, e := range m.AddMessageWithoutKeyMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			m.t.Errorf("Expected call to LOMSRepoMock.AddMessageWithoutKey with params: %#v", *e.params)
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.AddMessageWithoutKeyMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterAddMessageWithoutKeyCounter) < 1 {
+		if m.AddMessageWithoutKeyMock.defaultExpectation.params == nil {
+			m.t.Error("Expected call to LOMSRepoMock.AddMessageWithoutKey")
+		} else {
+			m.t.Errorf("Expected call to LOMSRepoMock.AddMessageWithoutKey with params: %#v", *m.AddMessageWithoutKeyMock.defaultExpectation.params)
+		}
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcAddMessageWithoutKey != nil && mm_atomic.LoadUint64(&m.afterAddMessageWithoutKeyCounter) < 1 {
+		m.t.Error("Expected call to LOMSRepoMock.AddMessageWithoutKey")
+	}
 }
 
 type mLOMSRepoMockCancelOrder struct {
@@ -794,6 +1273,222 @@ func (m *LOMSRepoMock) MinimockDecreaseStockInspect() {
 	// if func was set then invocations count should be greater than zero
 	if m.funcDecreaseStock != nil && mm_atomic.LoadUint64(&m.afterDecreaseStockCounter) < 1 {
 		m.t.Error("Expected call to LOMSRepoMock.DecreaseStock")
+	}
+}
+
+type mLOMSRepoMockDeleteMessage struct {
+	mock               *LOMSRepoMock
+	defaultExpectation *LOMSRepoMockDeleteMessageExpectation
+	expectations       []*LOMSRepoMockDeleteMessageExpectation
+
+	callArgs []*LOMSRepoMockDeleteMessageParams
+	mutex    sync.RWMutex
+}
+
+// LOMSRepoMockDeleteMessageExpectation specifies expectation struct of the LOMSRepo.DeleteMessage
+type LOMSRepoMockDeleteMessageExpectation struct {
+	mock    *LOMSRepoMock
+	params  *LOMSRepoMockDeleteMessageParams
+	results *LOMSRepoMockDeleteMessageResults
+	Counter uint64
+}
+
+// LOMSRepoMockDeleteMessageParams contains parameters of the LOMSRepo.DeleteMessage
+type LOMSRepoMockDeleteMessageParams struct {
+	ctx context.Context
+	id  int64
+}
+
+// LOMSRepoMockDeleteMessageResults contains results of the LOMSRepo.DeleteMessage
+type LOMSRepoMockDeleteMessageResults struct {
+	err error
+}
+
+// Expect sets up expected params for LOMSRepo.DeleteMessage
+func (mmDeleteMessage *mLOMSRepoMockDeleteMessage) Expect(ctx context.Context, id int64) *mLOMSRepoMockDeleteMessage {
+	if mmDeleteMessage.mock.funcDeleteMessage != nil {
+		mmDeleteMessage.mock.t.Fatalf("LOMSRepoMock.DeleteMessage mock is already set by Set")
+	}
+
+	if mmDeleteMessage.defaultExpectation == nil {
+		mmDeleteMessage.defaultExpectation = &LOMSRepoMockDeleteMessageExpectation{}
+	}
+
+	mmDeleteMessage.defaultExpectation.params = &LOMSRepoMockDeleteMessageParams{ctx, id}
+	for _, e := range mmDeleteMessage.expectations {
+		if minimock.Equal(e.params, mmDeleteMessage.defaultExpectation.params) {
+			mmDeleteMessage.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmDeleteMessage.defaultExpectation.params)
+		}
+	}
+
+	return mmDeleteMessage
+}
+
+// Inspect accepts an inspector function that has same arguments as the LOMSRepo.DeleteMessage
+func (mmDeleteMessage *mLOMSRepoMockDeleteMessage) Inspect(f func(ctx context.Context, id int64)) *mLOMSRepoMockDeleteMessage {
+	if mmDeleteMessage.mock.inspectFuncDeleteMessage != nil {
+		mmDeleteMessage.mock.t.Fatalf("Inspect function is already set for LOMSRepoMock.DeleteMessage")
+	}
+
+	mmDeleteMessage.mock.inspectFuncDeleteMessage = f
+
+	return mmDeleteMessage
+}
+
+// Return sets up results that will be returned by LOMSRepo.DeleteMessage
+func (mmDeleteMessage *mLOMSRepoMockDeleteMessage) Return(err error) *LOMSRepoMock {
+	if mmDeleteMessage.mock.funcDeleteMessage != nil {
+		mmDeleteMessage.mock.t.Fatalf("LOMSRepoMock.DeleteMessage mock is already set by Set")
+	}
+
+	if mmDeleteMessage.defaultExpectation == nil {
+		mmDeleteMessage.defaultExpectation = &LOMSRepoMockDeleteMessageExpectation{mock: mmDeleteMessage.mock}
+	}
+	mmDeleteMessage.defaultExpectation.results = &LOMSRepoMockDeleteMessageResults{err}
+	return mmDeleteMessage.mock
+}
+
+// Set uses given function f to mock the LOMSRepo.DeleteMessage method
+func (mmDeleteMessage *mLOMSRepoMockDeleteMessage) Set(f func(ctx context.Context, id int64) (err error)) *LOMSRepoMock {
+	if mmDeleteMessage.defaultExpectation != nil {
+		mmDeleteMessage.mock.t.Fatalf("Default expectation is already set for the LOMSRepo.DeleteMessage method")
+	}
+
+	if len(mmDeleteMessage.expectations) > 0 {
+		mmDeleteMessage.mock.t.Fatalf("Some expectations are already set for the LOMSRepo.DeleteMessage method")
+	}
+
+	mmDeleteMessage.mock.funcDeleteMessage = f
+	return mmDeleteMessage.mock
+}
+
+// When sets expectation for the LOMSRepo.DeleteMessage which will trigger the result defined by the following
+// Then helper
+func (mmDeleteMessage *mLOMSRepoMockDeleteMessage) When(ctx context.Context, id int64) *LOMSRepoMockDeleteMessageExpectation {
+	if mmDeleteMessage.mock.funcDeleteMessage != nil {
+		mmDeleteMessage.mock.t.Fatalf("LOMSRepoMock.DeleteMessage mock is already set by Set")
+	}
+
+	expectation := &LOMSRepoMockDeleteMessageExpectation{
+		mock:   mmDeleteMessage.mock,
+		params: &LOMSRepoMockDeleteMessageParams{ctx, id},
+	}
+	mmDeleteMessage.expectations = append(mmDeleteMessage.expectations, expectation)
+	return expectation
+}
+
+// Then sets up LOMSRepo.DeleteMessage return parameters for the expectation previously defined by the When method
+func (e *LOMSRepoMockDeleteMessageExpectation) Then(err error) *LOMSRepoMock {
+	e.results = &LOMSRepoMockDeleteMessageResults{err}
+	return e.mock
+}
+
+// DeleteMessage implements domain.LOMSRepo
+func (mmDeleteMessage *LOMSRepoMock) DeleteMessage(ctx context.Context, id int64) (err error) {
+	mm_atomic.AddUint64(&mmDeleteMessage.beforeDeleteMessageCounter, 1)
+	defer mm_atomic.AddUint64(&mmDeleteMessage.afterDeleteMessageCounter, 1)
+
+	if mmDeleteMessage.inspectFuncDeleteMessage != nil {
+		mmDeleteMessage.inspectFuncDeleteMessage(ctx, id)
+	}
+
+	mm_params := &LOMSRepoMockDeleteMessageParams{ctx, id}
+
+	// Record call args
+	mmDeleteMessage.DeleteMessageMock.mutex.Lock()
+	mmDeleteMessage.DeleteMessageMock.callArgs = append(mmDeleteMessage.DeleteMessageMock.callArgs, mm_params)
+	mmDeleteMessage.DeleteMessageMock.mutex.Unlock()
+
+	for _, e := range mmDeleteMessage.DeleteMessageMock.expectations {
+		if minimock.Equal(e.params, mm_params) {
+			mm_atomic.AddUint64(&e.Counter, 1)
+			return e.results.err
+		}
+	}
+
+	if mmDeleteMessage.DeleteMessageMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmDeleteMessage.DeleteMessageMock.defaultExpectation.Counter, 1)
+		mm_want := mmDeleteMessage.DeleteMessageMock.defaultExpectation.params
+		mm_got := LOMSRepoMockDeleteMessageParams{ctx, id}
+		if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
+			mmDeleteMessage.t.Errorf("LOMSRepoMock.DeleteMessage got unexpected parameters, want: %#v, got: %#v%s\n", *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+		}
+
+		mm_results := mmDeleteMessage.DeleteMessageMock.defaultExpectation.results
+		if mm_results == nil {
+			mmDeleteMessage.t.Fatal("No results are set for the LOMSRepoMock.DeleteMessage")
+		}
+		return (*mm_results).err
+	}
+	if mmDeleteMessage.funcDeleteMessage != nil {
+		return mmDeleteMessage.funcDeleteMessage(ctx, id)
+	}
+	mmDeleteMessage.t.Fatalf("Unexpected call to LOMSRepoMock.DeleteMessage. %v %v", ctx, id)
+	return
+}
+
+// DeleteMessageAfterCounter returns a count of finished LOMSRepoMock.DeleteMessage invocations
+func (mmDeleteMessage *LOMSRepoMock) DeleteMessageAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmDeleteMessage.afterDeleteMessageCounter)
+}
+
+// DeleteMessageBeforeCounter returns a count of LOMSRepoMock.DeleteMessage invocations
+func (mmDeleteMessage *LOMSRepoMock) DeleteMessageBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmDeleteMessage.beforeDeleteMessageCounter)
+}
+
+// Calls returns a list of arguments used in each call to LOMSRepoMock.DeleteMessage.
+// The list is in the same order as the calls were made (i.e. recent calls have a higher index)
+func (mmDeleteMessage *mLOMSRepoMockDeleteMessage) Calls() []*LOMSRepoMockDeleteMessageParams {
+	mmDeleteMessage.mutex.RLock()
+
+	argCopy := make([]*LOMSRepoMockDeleteMessageParams, len(mmDeleteMessage.callArgs))
+	copy(argCopy, mmDeleteMessage.callArgs)
+
+	mmDeleteMessage.mutex.RUnlock()
+
+	return argCopy
+}
+
+// MinimockDeleteMessageDone returns true if the count of the DeleteMessage invocations corresponds
+// the number of defined expectations
+func (m *LOMSRepoMock) MinimockDeleteMessageDone() bool {
+	for _, e := range m.DeleteMessageMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			return false
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.DeleteMessageMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterDeleteMessageCounter) < 1 {
+		return false
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcDeleteMessage != nil && mm_atomic.LoadUint64(&m.afterDeleteMessageCounter) < 1 {
+		return false
+	}
+	return true
+}
+
+// MinimockDeleteMessageInspect logs each unmet expectation
+func (m *LOMSRepoMock) MinimockDeleteMessageInspect() {
+	for _, e := range m.DeleteMessageMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			m.t.Errorf("Expected call to LOMSRepoMock.DeleteMessage with params: %#v", *e.params)
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.DeleteMessageMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterDeleteMessageCounter) < 1 {
+		if m.DeleteMessageMock.defaultExpectation.params == nil {
+			m.t.Error("Expected call to LOMSRepoMock.DeleteMessage")
+		} else {
+			m.t.Errorf("Expected call to LOMSRepoMock.DeleteMessage with params: %#v", *m.DeleteMessageMock.defaultExpectation.params)
+		}
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcDeleteMessage != nil && mm_atomic.LoadUint64(&m.afterDeleteMessageCounter) < 1 {
+		m.t.Error("Expected call to LOMSRepoMock.DeleteMessage")
 	}
 }
 
@@ -2316,6 +3011,222 @@ func (m *LOMSRepoMock) MinimockListUnpaidOrdersInspect() {
 	}
 }
 
+type mLOMSRepoMockListUnsent struct {
+	mock               *LOMSRepoMock
+	defaultExpectation *LOMSRepoMockListUnsentExpectation
+	expectations       []*LOMSRepoMockListUnsentExpectation
+
+	callArgs []*LOMSRepoMockListUnsentParams
+	mutex    sync.RWMutex
+}
+
+// LOMSRepoMockListUnsentExpectation specifies expectation struct of the LOMSRepo.ListUnsent
+type LOMSRepoMockListUnsentExpectation struct {
+	mock    *LOMSRepoMock
+	params  *LOMSRepoMockListUnsentParams
+	results *LOMSRepoMockListUnsentResults
+	Counter uint64
+}
+
+// LOMSRepoMockListUnsentParams contains parameters of the LOMSRepo.ListUnsent
+type LOMSRepoMockListUnsentParams struct {
+	ctx context.Context
+}
+
+// LOMSRepoMockListUnsentResults contains results of the LOMSRepo.ListUnsent
+type LOMSRepoMockListUnsentResults struct {
+	ma1 []outbox.Message
+	err error
+}
+
+// Expect sets up expected params for LOMSRepo.ListUnsent
+func (mmListUnsent *mLOMSRepoMockListUnsent) Expect(ctx context.Context) *mLOMSRepoMockListUnsent {
+	if mmListUnsent.mock.funcListUnsent != nil {
+		mmListUnsent.mock.t.Fatalf("LOMSRepoMock.ListUnsent mock is already set by Set")
+	}
+
+	if mmListUnsent.defaultExpectation == nil {
+		mmListUnsent.defaultExpectation = &LOMSRepoMockListUnsentExpectation{}
+	}
+
+	mmListUnsent.defaultExpectation.params = &LOMSRepoMockListUnsentParams{ctx}
+	for _, e := range mmListUnsent.expectations {
+		if minimock.Equal(e.params, mmListUnsent.defaultExpectation.params) {
+			mmListUnsent.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmListUnsent.defaultExpectation.params)
+		}
+	}
+
+	return mmListUnsent
+}
+
+// Inspect accepts an inspector function that has same arguments as the LOMSRepo.ListUnsent
+func (mmListUnsent *mLOMSRepoMockListUnsent) Inspect(f func(ctx context.Context)) *mLOMSRepoMockListUnsent {
+	if mmListUnsent.mock.inspectFuncListUnsent != nil {
+		mmListUnsent.mock.t.Fatalf("Inspect function is already set for LOMSRepoMock.ListUnsent")
+	}
+
+	mmListUnsent.mock.inspectFuncListUnsent = f
+
+	return mmListUnsent
+}
+
+// Return sets up results that will be returned by LOMSRepo.ListUnsent
+func (mmListUnsent *mLOMSRepoMockListUnsent) Return(ma1 []outbox.Message, err error) *LOMSRepoMock {
+	if mmListUnsent.mock.funcListUnsent != nil {
+		mmListUnsent.mock.t.Fatalf("LOMSRepoMock.ListUnsent mock is already set by Set")
+	}
+
+	if mmListUnsent.defaultExpectation == nil {
+		mmListUnsent.defaultExpectation = &LOMSRepoMockListUnsentExpectation{mock: mmListUnsent.mock}
+	}
+	mmListUnsent.defaultExpectation.results = &LOMSRepoMockListUnsentResults{ma1, err}
+	return mmListUnsent.mock
+}
+
+// Set uses given function f to mock the LOMSRepo.ListUnsent method
+func (mmListUnsent *mLOMSRepoMockListUnsent) Set(f func(ctx context.Context) (ma1 []outbox.Message, err error)) *LOMSRepoMock {
+	if mmListUnsent.defaultExpectation != nil {
+		mmListUnsent.mock.t.Fatalf("Default expectation is already set for the LOMSRepo.ListUnsent method")
+	}
+
+	if len(mmListUnsent.expectations) > 0 {
+		mmListUnsent.mock.t.Fatalf("Some expectations are already set for the LOMSRepo.ListUnsent method")
+	}
+
+	mmListUnsent.mock.funcListUnsent = f
+	return mmListUnsent.mock
+}
+
+// When sets expectation for the LOMSRepo.ListUnsent which will trigger the result defined by the following
+// Then helper
+func (mmListUnsent *mLOMSRepoMockListUnsent) When(ctx context.Context) *LOMSRepoMockListUnsentExpectation {
+	if mmListUnsent.mock.funcListUnsent != nil {
+		mmListUnsent.mock.t.Fatalf("LOMSRepoMock.ListUnsent mock is already set by Set")
+	}
+
+	expectation := &LOMSRepoMockListUnsentExpectation{
+		mock:   mmListUnsent.mock,
+		params: &LOMSRepoMockListUnsentParams{ctx},
+	}
+	mmListUnsent.expectations = append(mmListUnsent.expectations, expectation)
+	return expectation
+}
+
+// Then sets up LOMSRepo.ListUnsent return parameters for the expectation previously defined by the When method
+func (e *LOMSRepoMockListUnsentExpectation) Then(ma1 []outbox.Message, err error) *LOMSRepoMock {
+	e.results = &LOMSRepoMockListUnsentResults{ma1, err}
+	return e.mock
+}
+
+// ListUnsent implements domain.LOMSRepo
+func (mmListUnsent *LOMSRepoMock) ListUnsent(ctx context.Context) (ma1 []outbox.Message, err error) {
+	mm_atomic.AddUint64(&mmListUnsent.beforeListUnsentCounter, 1)
+	defer mm_atomic.AddUint64(&mmListUnsent.afterListUnsentCounter, 1)
+
+	if mmListUnsent.inspectFuncListUnsent != nil {
+		mmListUnsent.inspectFuncListUnsent(ctx)
+	}
+
+	mm_params := &LOMSRepoMockListUnsentParams{ctx}
+
+	// Record call args
+	mmListUnsent.ListUnsentMock.mutex.Lock()
+	mmListUnsent.ListUnsentMock.callArgs = append(mmListUnsent.ListUnsentMock.callArgs, mm_params)
+	mmListUnsent.ListUnsentMock.mutex.Unlock()
+
+	for _, e := range mmListUnsent.ListUnsentMock.expectations {
+		if minimock.Equal(e.params, mm_params) {
+			mm_atomic.AddUint64(&e.Counter, 1)
+			return e.results.ma1, e.results.err
+		}
+	}
+
+	if mmListUnsent.ListUnsentMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmListUnsent.ListUnsentMock.defaultExpectation.Counter, 1)
+		mm_want := mmListUnsent.ListUnsentMock.defaultExpectation.params
+		mm_got := LOMSRepoMockListUnsentParams{ctx}
+		if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
+			mmListUnsent.t.Errorf("LOMSRepoMock.ListUnsent got unexpected parameters, want: %#v, got: %#v%s\n", *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+		}
+
+		mm_results := mmListUnsent.ListUnsentMock.defaultExpectation.results
+		if mm_results == nil {
+			mmListUnsent.t.Fatal("No results are set for the LOMSRepoMock.ListUnsent")
+		}
+		return (*mm_results).ma1, (*mm_results).err
+	}
+	if mmListUnsent.funcListUnsent != nil {
+		return mmListUnsent.funcListUnsent(ctx)
+	}
+	mmListUnsent.t.Fatalf("Unexpected call to LOMSRepoMock.ListUnsent. %v", ctx)
+	return
+}
+
+// ListUnsentAfterCounter returns a count of finished LOMSRepoMock.ListUnsent invocations
+func (mmListUnsent *LOMSRepoMock) ListUnsentAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmListUnsent.afterListUnsentCounter)
+}
+
+// ListUnsentBeforeCounter returns a count of LOMSRepoMock.ListUnsent invocations
+func (mmListUnsent *LOMSRepoMock) ListUnsentBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmListUnsent.beforeListUnsentCounter)
+}
+
+// Calls returns a list of arguments used in each call to LOMSRepoMock.ListUnsent.
+// The list is in the same order as the calls were made (i.e. recent calls have a higher index)
+func (mmListUnsent *mLOMSRepoMockListUnsent) Calls() []*LOMSRepoMockListUnsentParams {
+	mmListUnsent.mutex.RLock()
+
+	argCopy := make([]*LOMSRepoMockListUnsentParams, len(mmListUnsent.callArgs))
+	copy(argCopy, mmListUnsent.callArgs)
+
+	mmListUnsent.mutex.RUnlock()
+
+	return argCopy
+}
+
+// MinimockListUnsentDone returns true if the count of the ListUnsent invocations corresponds
+// the number of defined expectations
+func (m *LOMSRepoMock) MinimockListUnsentDone() bool {
+	for _, e := range m.ListUnsentMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			return false
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.ListUnsentMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterListUnsentCounter) < 1 {
+		return false
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcListUnsent != nil && mm_atomic.LoadUint64(&m.afterListUnsentCounter) < 1 {
+		return false
+	}
+	return true
+}
+
+// MinimockListUnsentInspect logs each unmet expectation
+func (m *LOMSRepoMock) MinimockListUnsentInspect() {
+	for _, e := range m.ListUnsentMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			m.t.Errorf("Expected call to LOMSRepoMock.ListUnsent with params: %#v", *e.params)
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.ListUnsentMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterListUnsentCounter) < 1 {
+		if m.ListUnsentMock.defaultExpectation.params == nil {
+			m.t.Error("Expected call to LOMSRepoMock.ListUnsent")
+		} else {
+			m.t.Errorf("Expected call to LOMSRepoMock.ListUnsent with params: %#v", *m.ListUnsentMock.defaultExpectation.params)
+		}
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcListUnsent != nil && mm_atomic.LoadUint64(&m.afterListUnsentCounter) < 1 {
+		m.t.Error("Expected call to LOMSRepoMock.ListUnsent")
+	}
+}
+
 type mLOMSRepoMockPayOrder struct {
 	mock               *LOMSRepoMock
 	defaultExpectation *LOMSRepoMockPayOrderExpectation
@@ -2968,14 +3879,237 @@ func (m *LOMSRepoMock) MinimockReserveItemInspect() {
 	}
 }
 
+type mLOMSRepoMockUpdateMessageStatus struct {
+	mock               *LOMSRepoMock
+	defaultExpectation *LOMSRepoMockUpdateMessageStatusExpectation
+	expectations       []*LOMSRepoMockUpdateMessageStatusExpectation
+
+	callArgs []*LOMSRepoMockUpdateMessageStatusParams
+	mutex    sync.RWMutex
+}
+
+// LOMSRepoMockUpdateMessageStatusExpectation specifies expectation struct of the LOMSRepo.UpdateMessageStatus
+type LOMSRepoMockUpdateMessageStatusExpectation struct {
+	mock    *LOMSRepoMock
+	params  *LOMSRepoMockUpdateMessageStatusParams
+	results *LOMSRepoMockUpdateMessageStatusResults
+	Counter uint64
+}
+
+// LOMSRepoMockUpdateMessageStatusParams contains parameters of the LOMSRepo.UpdateMessageStatus
+type LOMSRepoMockUpdateMessageStatusParams struct {
+	ctx    context.Context
+	id     int64
+	status outbox.Status
+}
+
+// LOMSRepoMockUpdateMessageStatusResults contains results of the LOMSRepo.UpdateMessageStatus
+type LOMSRepoMockUpdateMessageStatusResults struct {
+	err error
+}
+
+// Expect sets up expected params for LOMSRepo.UpdateMessageStatus
+func (mmUpdateMessageStatus *mLOMSRepoMockUpdateMessageStatus) Expect(ctx context.Context, id int64, status outbox.Status) *mLOMSRepoMockUpdateMessageStatus {
+	if mmUpdateMessageStatus.mock.funcUpdateMessageStatus != nil {
+		mmUpdateMessageStatus.mock.t.Fatalf("LOMSRepoMock.UpdateMessageStatus mock is already set by Set")
+	}
+
+	if mmUpdateMessageStatus.defaultExpectation == nil {
+		mmUpdateMessageStatus.defaultExpectation = &LOMSRepoMockUpdateMessageStatusExpectation{}
+	}
+
+	mmUpdateMessageStatus.defaultExpectation.params = &LOMSRepoMockUpdateMessageStatusParams{ctx, id, status}
+	for _, e := range mmUpdateMessageStatus.expectations {
+		if minimock.Equal(e.params, mmUpdateMessageStatus.defaultExpectation.params) {
+			mmUpdateMessageStatus.mock.t.Fatalf("Expectation set by When has same params: %#v", *mmUpdateMessageStatus.defaultExpectation.params)
+		}
+	}
+
+	return mmUpdateMessageStatus
+}
+
+// Inspect accepts an inspector function that has same arguments as the LOMSRepo.UpdateMessageStatus
+func (mmUpdateMessageStatus *mLOMSRepoMockUpdateMessageStatus) Inspect(f func(ctx context.Context, id int64, status outbox.Status)) *mLOMSRepoMockUpdateMessageStatus {
+	if mmUpdateMessageStatus.mock.inspectFuncUpdateMessageStatus != nil {
+		mmUpdateMessageStatus.mock.t.Fatalf("Inspect function is already set for LOMSRepoMock.UpdateMessageStatus")
+	}
+
+	mmUpdateMessageStatus.mock.inspectFuncUpdateMessageStatus = f
+
+	return mmUpdateMessageStatus
+}
+
+// Return sets up results that will be returned by LOMSRepo.UpdateMessageStatus
+func (mmUpdateMessageStatus *mLOMSRepoMockUpdateMessageStatus) Return(err error) *LOMSRepoMock {
+	if mmUpdateMessageStatus.mock.funcUpdateMessageStatus != nil {
+		mmUpdateMessageStatus.mock.t.Fatalf("LOMSRepoMock.UpdateMessageStatus mock is already set by Set")
+	}
+
+	if mmUpdateMessageStatus.defaultExpectation == nil {
+		mmUpdateMessageStatus.defaultExpectation = &LOMSRepoMockUpdateMessageStatusExpectation{mock: mmUpdateMessageStatus.mock}
+	}
+	mmUpdateMessageStatus.defaultExpectation.results = &LOMSRepoMockUpdateMessageStatusResults{err}
+	return mmUpdateMessageStatus.mock
+}
+
+// Set uses given function f to mock the LOMSRepo.UpdateMessageStatus method
+func (mmUpdateMessageStatus *mLOMSRepoMockUpdateMessageStatus) Set(f func(ctx context.Context, id int64, status outbox.Status) (err error)) *LOMSRepoMock {
+	if mmUpdateMessageStatus.defaultExpectation != nil {
+		mmUpdateMessageStatus.mock.t.Fatalf("Default expectation is already set for the LOMSRepo.UpdateMessageStatus method")
+	}
+
+	if len(mmUpdateMessageStatus.expectations) > 0 {
+		mmUpdateMessageStatus.mock.t.Fatalf("Some expectations are already set for the LOMSRepo.UpdateMessageStatus method")
+	}
+
+	mmUpdateMessageStatus.mock.funcUpdateMessageStatus = f
+	return mmUpdateMessageStatus.mock
+}
+
+// When sets expectation for the LOMSRepo.UpdateMessageStatus which will trigger the result defined by the following
+// Then helper
+func (mmUpdateMessageStatus *mLOMSRepoMockUpdateMessageStatus) When(ctx context.Context, id int64, status outbox.Status) *LOMSRepoMockUpdateMessageStatusExpectation {
+	if mmUpdateMessageStatus.mock.funcUpdateMessageStatus != nil {
+		mmUpdateMessageStatus.mock.t.Fatalf("LOMSRepoMock.UpdateMessageStatus mock is already set by Set")
+	}
+
+	expectation := &LOMSRepoMockUpdateMessageStatusExpectation{
+		mock:   mmUpdateMessageStatus.mock,
+		params: &LOMSRepoMockUpdateMessageStatusParams{ctx, id, status},
+	}
+	mmUpdateMessageStatus.expectations = append(mmUpdateMessageStatus.expectations, expectation)
+	return expectation
+}
+
+// Then sets up LOMSRepo.UpdateMessageStatus return parameters for the expectation previously defined by the When method
+func (e *LOMSRepoMockUpdateMessageStatusExpectation) Then(err error) *LOMSRepoMock {
+	e.results = &LOMSRepoMockUpdateMessageStatusResults{err}
+	return e.mock
+}
+
+// UpdateMessageStatus implements domain.LOMSRepo
+func (mmUpdateMessageStatus *LOMSRepoMock) UpdateMessageStatus(ctx context.Context, id int64, status outbox.Status) (err error) {
+	mm_atomic.AddUint64(&mmUpdateMessageStatus.beforeUpdateMessageStatusCounter, 1)
+	defer mm_atomic.AddUint64(&mmUpdateMessageStatus.afterUpdateMessageStatusCounter, 1)
+
+	if mmUpdateMessageStatus.inspectFuncUpdateMessageStatus != nil {
+		mmUpdateMessageStatus.inspectFuncUpdateMessageStatus(ctx, id, status)
+	}
+
+	mm_params := &LOMSRepoMockUpdateMessageStatusParams{ctx, id, status}
+
+	// Record call args
+	mmUpdateMessageStatus.UpdateMessageStatusMock.mutex.Lock()
+	mmUpdateMessageStatus.UpdateMessageStatusMock.callArgs = append(mmUpdateMessageStatus.UpdateMessageStatusMock.callArgs, mm_params)
+	mmUpdateMessageStatus.UpdateMessageStatusMock.mutex.Unlock()
+
+	for _, e := range mmUpdateMessageStatus.UpdateMessageStatusMock.expectations {
+		if minimock.Equal(e.params, mm_params) {
+			mm_atomic.AddUint64(&e.Counter, 1)
+			return e.results.err
+		}
+	}
+
+	if mmUpdateMessageStatus.UpdateMessageStatusMock.defaultExpectation != nil {
+		mm_atomic.AddUint64(&mmUpdateMessageStatus.UpdateMessageStatusMock.defaultExpectation.Counter, 1)
+		mm_want := mmUpdateMessageStatus.UpdateMessageStatusMock.defaultExpectation.params
+		mm_got := LOMSRepoMockUpdateMessageStatusParams{ctx, id, status}
+		if mm_want != nil && !minimock.Equal(*mm_want, mm_got) {
+			mmUpdateMessageStatus.t.Errorf("LOMSRepoMock.UpdateMessageStatus got unexpected parameters, want: %#v, got: %#v%s\n", *mm_want, mm_got, minimock.Diff(*mm_want, mm_got))
+		}
+
+		mm_results := mmUpdateMessageStatus.UpdateMessageStatusMock.defaultExpectation.results
+		if mm_results == nil {
+			mmUpdateMessageStatus.t.Fatal("No results are set for the LOMSRepoMock.UpdateMessageStatus")
+		}
+		return (*mm_results).err
+	}
+	if mmUpdateMessageStatus.funcUpdateMessageStatus != nil {
+		return mmUpdateMessageStatus.funcUpdateMessageStatus(ctx, id, status)
+	}
+	mmUpdateMessageStatus.t.Fatalf("Unexpected call to LOMSRepoMock.UpdateMessageStatus. %v %v %v", ctx, id, status)
+	return
+}
+
+// UpdateMessageStatusAfterCounter returns a count of finished LOMSRepoMock.UpdateMessageStatus invocations
+func (mmUpdateMessageStatus *LOMSRepoMock) UpdateMessageStatusAfterCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmUpdateMessageStatus.afterUpdateMessageStatusCounter)
+}
+
+// UpdateMessageStatusBeforeCounter returns a count of LOMSRepoMock.UpdateMessageStatus invocations
+func (mmUpdateMessageStatus *LOMSRepoMock) UpdateMessageStatusBeforeCounter() uint64 {
+	return mm_atomic.LoadUint64(&mmUpdateMessageStatus.beforeUpdateMessageStatusCounter)
+}
+
+// Calls returns a list of arguments used in each call to LOMSRepoMock.UpdateMessageStatus.
+// The list is in the same order as the calls were made (i.e. recent calls have a higher index)
+func (mmUpdateMessageStatus *mLOMSRepoMockUpdateMessageStatus) Calls() []*LOMSRepoMockUpdateMessageStatusParams {
+	mmUpdateMessageStatus.mutex.RLock()
+
+	argCopy := make([]*LOMSRepoMockUpdateMessageStatusParams, len(mmUpdateMessageStatus.callArgs))
+	copy(argCopy, mmUpdateMessageStatus.callArgs)
+
+	mmUpdateMessageStatus.mutex.RUnlock()
+
+	return argCopy
+}
+
+// MinimockUpdateMessageStatusDone returns true if the count of the UpdateMessageStatus invocations corresponds
+// the number of defined expectations
+func (m *LOMSRepoMock) MinimockUpdateMessageStatusDone() bool {
+	for _, e := range m.UpdateMessageStatusMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			return false
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.UpdateMessageStatusMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterUpdateMessageStatusCounter) < 1 {
+		return false
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcUpdateMessageStatus != nil && mm_atomic.LoadUint64(&m.afterUpdateMessageStatusCounter) < 1 {
+		return false
+	}
+	return true
+}
+
+// MinimockUpdateMessageStatusInspect logs each unmet expectation
+func (m *LOMSRepoMock) MinimockUpdateMessageStatusInspect() {
+	for _, e := range m.UpdateMessageStatusMock.expectations {
+		if mm_atomic.LoadUint64(&e.Counter) < 1 {
+			m.t.Errorf("Expected call to LOMSRepoMock.UpdateMessageStatus with params: %#v", *e.params)
+		}
+	}
+
+	// if default expectation was set then invocations count should be greater than zero
+	if m.UpdateMessageStatusMock.defaultExpectation != nil && mm_atomic.LoadUint64(&m.afterUpdateMessageStatusCounter) < 1 {
+		if m.UpdateMessageStatusMock.defaultExpectation.params == nil {
+			m.t.Error("Expected call to LOMSRepoMock.UpdateMessageStatus")
+		} else {
+			m.t.Errorf("Expected call to LOMSRepoMock.UpdateMessageStatus with params: %#v", *m.UpdateMessageStatusMock.defaultExpectation.params)
+		}
+	}
+	// if func was set then invocations count should be greater than zero
+	if m.funcUpdateMessageStatus != nil && mm_atomic.LoadUint64(&m.afterUpdateMessageStatusCounter) < 1 {
+		m.t.Error("Expected call to LOMSRepoMock.UpdateMessageStatus")
+	}
+}
+
 // MinimockFinish checks that all mocked methods have been called the expected number of times
 func (m *LOMSRepoMock) MinimockFinish() {
 	if !m.minimockDone() {
+		m.MinimockAddMessageWithKeyInspect()
+
+		m.MinimockAddMessageWithoutKeyInspect()
+
 		m.MinimockCancelOrderInspect()
 
 		m.MinimockChangeOrderStatusInspect()
 
 		m.MinimockDecreaseStockInspect()
+
+		m.MinimockDeleteMessageInspect()
 
 		m.MinimockGetStocksInspect()
 
@@ -2991,11 +4125,15 @@ func (m *LOMSRepoMock) MinimockFinish() {
 
 		m.MinimockListUnpaidOrdersInspect()
 
+		m.MinimockListUnsentInspect()
+
 		m.MinimockPayOrderInspect()
 
 		m.MinimockRemoveItemsFromReservedInspect()
 
 		m.MinimockReserveItemInspect()
+
+		m.MinimockUpdateMessageStatusInspect()
 		m.t.FailNow()
 	}
 }
@@ -3019,9 +4157,12 @@ func (m *LOMSRepoMock) MinimockWait(timeout mm_time.Duration) {
 func (m *LOMSRepoMock) minimockDone() bool {
 	done := true
 	return done &&
+		m.MinimockAddMessageWithKeyDone() &&
+		m.MinimockAddMessageWithoutKeyDone() &&
 		m.MinimockCancelOrderDone() &&
 		m.MinimockChangeOrderStatusDone() &&
 		m.MinimockDecreaseStockDone() &&
+		m.MinimockDeleteMessageDone() &&
 		m.MinimockGetStocksDone() &&
 		m.MinimockIncreaseStockDone() &&
 		m.MinimockInsertOrderInfoDone() &&
@@ -3029,7 +4170,9 @@ func (m *LOMSRepoMock) minimockDone() bool {
 		m.MinimockListOrderInfoDone() &&
 		m.MinimockListOrderItemsDone() &&
 		m.MinimockListUnpaidOrdersDone() &&
+		m.MinimockListUnsentDone() &&
 		m.MinimockPayOrderDone() &&
 		m.MinimockRemoveItemsFromReservedDone() &&
-		m.MinimockReserveItemDone()
+		m.MinimockReserveItemDone() &&
+		m.MinimockUpdateMessageStatusDone()
 }

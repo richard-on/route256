@@ -17,6 +17,8 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
 	lomsservice "gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/api/loms"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/message/broker/kafka"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/message/sender"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/repository/transactor"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"
@@ -71,7 +73,34 @@ func Run(cfg *config.Config) {
 	tx := transactor.New(pool)
 	repo := repository.New(tx, tx)
 
-	model := domain.New(cfg.Service, repo, tx)
+	producer, err := kafka.NewAsyncProducer(cfg.Kafka)
+	if err != nil {
+		log.Fatal(err, "creating kafka producer")
+	}
+
+	// We'll need a separate context for sender.
+	// This context is not cancelled on signal. It is cancelled when sender has been gracefully closed.
+	senderCtx, cancelSender := context.WithCancel(context.Background())
+
+	// Sender results will be passed into these channels.
+	successChan := make(chan int64)
+	failChan := make(chan int64)
+	defer func() {
+		close(successChan)
+		close(failChan)
+	}()
+	statusSender := sender.NewStatusSender(
+		producer,
+		cfg.Kafka,
+		sender.WithSuccessFunc(func(id int64) {
+			successChan <- id
+		}),
+		sender.WithFailFunc(func(id int64) {
+			failChan <- id
+		}),
+	)
+
+	model := domain.New(cfg.Service, repo, tx, statusSender)
 
 	grpchealth.RegisterHealthServer(s, health.NewServer())
 	reflection.Register(s)
@@ -86,15 +115,38 @@ func Run(cfg *config.Config) {
 	log.Infof("grpc server listening at %v", listener.Addr())
 
 	// Start a separate goroutine to check and cancel unpaid orders.
-	errChan := make(chan error)
+	unpaidErrChan := make(chan error)
+	go model.MonitorUnpaid(ctx, unpaidErrChan)
 	go func() {
-		model.MonitorUnpaid(ctx, errChan)
-		for err := range errChan {
+		for err = range unpaidErrChan {
 			log.Error(err, "cancelling unpaid orders")
 		}
 	}()
 
+	// Start a separate goroutine to send enqueued messages to a broker.
+	unsentErrChan := make(chan error)
+	go model.MonitorUnsent(ctx, unsentErrChan)
+	go func() {
+		for err = range unsentErrChan {
+			log.Error(err, "sending message to a broker")
+		}
+	}()
+
+	// Start a separate goroutine to monitor Success and Errors channels
+	// and update outbox based on these results.
+	monitorErrChan := make(chan error)
+	go model.MonitorSenderResult(senderCtx, successChan, failChan, monitorErrChan)
+	go func() {
+		for err = range monitorErrChan {
+			log.Error(err, "updating message status")
+		}
+	}()
+
 	<-ctx.Done()
+	// First, close the sender and drain its channels.
+	statusSender.Close()
+	// Then, cancel contexts.
+	cancelSender()
 	cancel()
 
 	log.Info("shutting down: loms service")

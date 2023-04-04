@@ -113,6 +113,7 @@ func TestCreateOrder(t *testing.T) {
 				mock.InsertOrderInfoMock.Expect(ctxTx, model.Order{Status: model.NewOrder, User: user}).
 					Return(orderID, nil)
 				mock.InsertOrderItemsMock.Expect(ctxTx, orderID, itemsToBuy).Return(nil)
+				mock.AddMessageWithKeyMock.Return(nil)
 
 				for i := 0; i < len(itemsToBuy); i++ {
 					mock.GetStocksMock.When(ctxTx, itemsToBuy[i].SKU).Then(itemStocks[i].stocks, nil)
@@ -203,6 +204,7 @@ func TestCreateOrder(t *testing.T) {
 				mock.GetStocksMock.When(ctxTx, itemsToBuy[0].SKU).Then(itemStocks[0].stocks, getStocksErr)
 
 				mock.ChangeOrderStatusMock.Expect(ctx, orderID, model.Failed).Return(nil)
+				mock.AddMessageWithKeyMock.Return(nil)
 
 				return mock
 			},
@@ -238,6 +240,7 @@ func TestCreateOrder(t *testing.T) {
 					Then(ErrStockNotExists)
 
 				mock.ChangeOrderStatusMock.Expect(ctx, orderID, model.Failed).Return(nil)
+				mock.AddMessageWithKeyMock.Return(nil)
 
 				return mock
 			},
@@ -275,6 +278,7 @@ func TestCreateOrder(t *testing.T) {
 					Then(ErrStockNotExists)
 
 				mock.ChangeOrderStatusMock.Expect(ctx, orderID, model.Failed).Return(nil)
+				mock.AddMessageWithKeyMock.Return(nil)
 
 				return mock
 			},
@@ -305,6 +309,7 @@ func TestCreateOrder(t *testing.T) {
 				mock.GetStocksMock.When(ctxTx, itemsToBuy[0].SKU).Then(itemStocks[0].stocks, getStocksErr)
 
 				mock.ChangeOrderStatusMock.Expect(ctx, orderID, model.Failed).Return(changeStatusErr)
+				mock.AddMessageWithKeyMock.Return(nil)
 
 				return mock
 			},

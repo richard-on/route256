@@ -5,7 +5,6 @@ go 1.20
 require (
 	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129
 	github.com/rs/zerolog v1.29.0
-	go.uber.org/goleak v1.2.1
 	google.golang.org/grpc v1.53.0
 )
 

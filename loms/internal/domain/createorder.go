@@ -27,6 +27,11 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []model.Item
 			return err
 		}
 
+		err = d.CreateStatusMessage(ctx, orderID, model.NewOrder)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -75,6 +80,11 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []model.Item
 			return err
 		}
 
+		err = d.CreateStatusMessage(ctx, orderID, model.AwaitingPayment)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -82,6 +92,11 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []model.Item
 		changeErr := d.LOMSRepo.ChangeOrderStatus(ctx, orderID, model.Failed)
 		if changeErr != nil {
 			return 0, changeErr
+		}
+
+		statusErr := d.CreateStatusMessage(ctx, orderID, model.Failed)
+		if statusErr != nil {
+			return 0, statusErr
 		}
 
 		return 0, err

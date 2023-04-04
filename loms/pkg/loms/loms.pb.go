@@ -609,6 +609,62 @@ func (x *StocksResponse) GetStocks() []*Stock {
 	return nil
 }
 
+// StatusUpdate represents a current status of the order.
+type OrderStatus struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	OrderId int64  `protobuf:"varint,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	Status  Status `protobuf:"varint,2,opt,name=status,proto3,enum=loms.Status" json:"status,omitempty"`
+}
+
+func (x *OrderStatus) Reset() {
+	*x = OrderStatus{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_loms_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OrderStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OrderStatus) ProtoMessage() {}
+
+func (x *OrderStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_loms_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OrderStatus.ProtoReflect.Descriptor instead.
+func (*OrderStatus) Descriptor() ([]byte, []int) {
+	return file_loms_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *OrderStatus) GetOrderId() int64 {
+	if x != nil {
+		return x.OrderId
+	}
+	return 0
+}
+
+func (x *OrderStatus) GetStatus() Status {
+	if x != nil {
+		return x.Status
+	}
+	return Status_STATUS_UNSPECIFIED
+}
+
 var File_loms_proto protoreflect.FileDescriptor
 
 var file_loms_proto_rawDesc = []byte{
@@ -651,7 +707,12 @@ var file_loms_proto_rawDesc = []byte{
 	0x6e, 0x74, 0x22, 0x35, 0x0a, 0x0e, 0x53, 0x74, 0x6f, 0x63, 0x6b, 0x73, 0x52, 0x65, 0x73, 0x70,
 	0x6f, 0x6e, 0x73, 0x65, 0x12, 0x23, 0x0a, 0x06, 0x73, 0x74, 0x6f, 0x63, 0x6b, 0x73, 0x18, 0x01,
 	0x20, 0x03, 0x28, 0x0b, 0x32, 0x0b, 0x2e, 0x6c, 0x6f, 0x6d, 0x73, 0x2e, 0x53, 0x74, 0x6f, 0x63,
-	0x6b, 0x52, 0x06, 0x73, 0x74, 0x6f, 0x63, 0x6b, 0x73, 0x2a, 0x87, 0x01, 0x0a, 0x06, 0x53, 0x74,
+	0x6b, 0x52, 0x06, 0x73, 0x74, 0x6f, 0x63, 0x6b, 0x73, 0x22, 0x4e, 0x0a, 0x0b, 0x4f, 0x72, 0x64,
+	0x65, 0x72, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x19, 0x0a, 0x08, 0x6f, 0x72, 0x64, 0x65,
+	0x72, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x03, 0x52, 0x07, 0x6f, 0x72, 0x64, 0x65,
+	0x72, 0x49, 0x64, 0x12, 0x24, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x0e, 0x32, 0x0c, 0x2e, 0x6c, 0x6f, 0x6d, 0x73, 0x2e, 0x53, 0x74, 0x61, 0x74, 0x75,
+	0x73, 0x52, 0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x2a, 0x87, 0x01, 0x0a, 0x06, 0x53, 0x74,
 	0x61, 0x74, 0x75, 0x73, 0x12, 0x16, 0x0a, 0x12, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x55,
 	0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x0e, 0x0a, 0x0a,
 	0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f, 0x4e, 0x45, 0x57, 0x10, 0x01, 0x12, 0x1b, 0x0a, 0x17,
@@ -700,7 +761,7 @@ func file_loms_proto_rawDescGZIP() []byte {
 }
 
 var file_loms_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_loms_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_loms_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_loms_proto_goTypes = []interface{}{
 	(Status)(0),                 // 0: loms.Status
 	(*Item)(nil),                // 1: loms.Item
@@ -713,28 +774,30 @@ var file_loms_proto_goTypes = []interface{}{
 	(*StocksRequest)(nil),       // 8: loms.StocksRequest
 	(*Stock)(nil),               // 9: loms.Stock
 	(*StocksResponse)(nil),      // 10: loms.StocksResponse
-	(*emptypb.Empty)(nil),       // 11: google.protobuf.Empty
+	(*OrderStatus)(nil),         // 11: loms.OrderStatus
+	(*emptypb.Empty)(nil),       // 12: google.protobuf.Empty
 }
 var file_loms_proto_depIdxs = []int32{
 	1,  // 0: loms.CreateOrderRequest.items:type_name -> loms.Item
 	0,  // 1: loms.ListOrderResponse.status:type_name -> loms.Status
 	1,  // 2: loms.ListOrderResponse.items:type_name -> loms.Item
 	9,  // 3: loms.StocksResponse.stocks:type_name -> loms.Stock
-	2,  // 4: loms.LOMS.CreateOrder:input_type -> loms.CreateOrderRequest
-	4,  // 5: loms.LOMS.ListOrder:input_type -> loms.ListOrderRequest
-	6,  // 6: loms.LOMS.OrderPaid:input_type -> loms.OrderPaidRequest
-	7,  // 7: loms.LOMS.CancelOrder:input_type -> loms.CancelOrderRequest
-	8,  // 8: loms.LOMS.Stocks:input_type -> loms.StocksRequest
-	3,  // 9: loms.LOMS.CreateOrder:output_type -> loms.CreateOrderResponse
-	5,  // 10: loms.LOMS.ListOrder:output_type -> loms.ListOrderResponse
-	11, // 11: loms.LOMS.OrderPaid:output_type -> google.protobuf.Empty
-	11, // 12: loms.LOMS.CancelOrder:output_type -> google.protobuf.Empty
-	10, // 13: loms.LOMS.Stocks:output_type -> loms.StocksResponse
-	9,  // [9:14] is the sub-list for method output_type
-	4,  // [4:9] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	0,  // 4: loms.OrderStatus.status:type_name -> loms.Status
+	2,  // 5: loms.LOMS.CreateOrder:input_type -> loms.CreateOrderRequest
+	4,  // 6: loms.LOMS.ListOrder:input_type -> loms.ListOrderRequest
+	6,  // 7: loms.LOMS.OrderPaid:input_type -> loms.OrderPaidRequest
+	7,  // 8: loms.LOMS.CancelOrder:input_type -> loms.CancelOrderRequest
+	8,  // 9: loms.LOMS.Stocks:input_type -> loms.StocksRequest
+	3,  // 10: loms.LOMS.CreateOrder:output_type -> loms.CreateOrderResponse
+	5,  // 11: loms.LOMS.ListOrder:output_type -> loms.ListOrderResponse
+	12, // 12: loms.LOMS.OrderPaid:output_type -> google.protobuf.Empty
+	12, // 13: loms.LOMS.CancelOrder:output_type -> google.protobuf.Empty
+	10, // 14: loms.LOMS.Stocks:output_type -> loms.StocksResponse
+	10, // [10:15] is the sub-list for method output_type
+	5,  // [5:10] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_loms_proto_init() }
@@ -863,6 +926,18 @@ func file_loms_proto_init() {
 				return nil
 			}
 		}
+		file_loms_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OrderStatus); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -870,7 +945,7 @@ func file_loms_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_loms_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

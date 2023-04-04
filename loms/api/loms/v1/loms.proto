@@ -92,3 +92,9 @@ message StocksResponse {
   // A number of specific product available in different warehouses.
   repeated Stock stocks = 1;
 }
+
+// StatusUpdate represents a current status of the order.
+message OrderStatus {
+  int64 order_id = 1;
+  Status status = 2;
+}

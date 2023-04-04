@@ -69,6 +69,7 @@ func TestCancelOrder(t *testing.T) {
 			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
 				mock := mocks.NewLOMSRepoMock(mc)
 				mock.CancelOrderMock.Expect(ctxTx, orderID).Return(nil)
+				mock.AddMessageWithKeyMock.Return(nil)
 				mock.RemoveItemsFromReservedMock.Expect(ctxTx, orderID).Return(skus, stocks, nil)
 
 				for i, sku := range skus {
@@ -225,6 +226,7 @@ func TestCancelUnpaidOrders(t *testing.T) {
 			lomsRepoMock: func(mc *minimock.Controller) LOMSRepo {
 				mock := mocks.NewLOMSRepoMock(mc)
 				mock.ListUnpaidOrdersMock.Expect(ctx, paymentTimeout).Return(unpaidOrders, nil)
+				mock.AddMessageWithKeyMock.Return(nil)
 				for i := 0; i < len(unpaidOrders); i++ {
 					mock.CancelOrderMock.When(ctxTx, unpaidOrders[i]).Then(nil)
 					mock.RemoveItemsFromReservedMock.When(ctxTx, unpaidOrders[i]).Then(skus, stocks, nil)

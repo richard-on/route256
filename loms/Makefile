@@ -8,14 +8,17 @@ PACKAGE=gitlab.ozon.dev/rragusskiy/homework-1/loms/cmd/app
 RPCNAME=loms.proto
 PROTOPATH=api/loms/v1
 RPCPATH=pkg/loms
+PROTOVER=v1
 BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
-APPVER=0.4.1
+APPVER=0.5.0
 
 all: format build test lint
 
 build: bindir
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-	go build -ldflags="-X main.Version=${APPVER} -X main.Build=${BUILDDATE}" \
+	go build -ldflags="-X gitlab.ozon.dev/rragusskiy/homework-1/loms/config.Version=${APPVER} \
+	 -X gitlab.ozon.dev/rragusskiy/homework-1/loms/config.Build=${BUILDDATE} \
+	 -X gitlab.ozon.dev/rragusskiy/homework-1/loms/config.ProtoVersion=${PROTOVER}" \
  					   		-o ${BINDIR}/app ${PACKAGE}
 
 test:

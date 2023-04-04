@@ -7,9 +7,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var (
+	Version string // Version of this app.
+	Build   string // Build date and time.
+)
+
 type Config struct {
 	Service `yaml:"service"`
 	Log     `yaml:"log"`
+	Kafka   `yaml:"kafka"`
 }
 
 type Service struct {
@@ -18,6 +24,20 @@ type Service struct {
 
 type Log struct {
 	Level string `yaml:"logLevel"`
+}
+
+type Kafka struct {
+	Topic          string      `yaml:"topic"`
+	Brokers        []string    `yaml:"brokers"`
+	ConsumerConfig KafkaConfig `yaml:"consumerConfig"`
+}
+
+type KafkaConfig struct {
+	ClientID         string   `yaml:"clientId"`
+	GroupID          string   `yaml:"groupId"`
+	GroupStrategies  []string `yaml:"groupStrategies"`
+	InitialOffset    int      `yaml:"initialOffset"`
+	EnableAutoCommit bool     `yaml:"enableAutoCommit"`
 }
 
 // New reads and returns app config.
