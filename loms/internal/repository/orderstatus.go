@@ -22,8 +22,6 @@ func (r *Repository) ChangeOrderStatus(ctx context.Context, orderID int64, statu
 		return err
 	}
 
-	r.log.RawSQL("ChangeOrderStatus", raw, args)
-
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
 		r.log.PGTag("ChangeOrderStatus", tag, err)

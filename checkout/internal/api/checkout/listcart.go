@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"

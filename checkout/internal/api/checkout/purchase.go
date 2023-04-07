@@ -7,7 +7,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Purchase creates an order containing all products in a user's cart.

@@ -25,8 +25,6 @@ func (r *Repository) DecreaseItemCartCount(ctx context.Context, userID int64, mo
 		return err
 	}
 
-	r.log.RawSQL("DecreaseItemCartCount", raw, args)
-
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
 		r.log.PGTag("DecreaseItemCartCount", tag, err)
@@ -51,8 +49,6 @@ func (r *Repository) DeleteItemCart(ctx context.Context, userID int64, sku uint3
 		return err
 	}
 
-	r.log.RawSQL("DeleteItemCart", raw, args)
-
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
 		r.log.PGTag("DeleteItemCart", tag, err)
@@ -75,8 +71,6 @@ func (r *Repository) ClearCart(ctx context.Context, userID int64) error {
 	if err != nil {
 		return err
 	}
-
-	r.log.RawSQL("ClearCart", raw, args)
 
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {

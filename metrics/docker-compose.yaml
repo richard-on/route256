@@ -44,3 +44,8 @@ services:
       - grafana_data:/var/lib/grafana
     links:
       - prometheus
+
+volumes:
+  grafana_data:
+    driver:
+      local

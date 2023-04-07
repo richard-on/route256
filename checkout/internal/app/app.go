@@ -5,10 +5,7 @@ package app
 import (
 	"context"
 	"fmt"
-	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/metrics"
-	metricsInterceptor "gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/metrics/grpc"
-	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/grpc/interceptor"
-	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/zerolog"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -17,7 +14,9 @@ import (
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
 	checkoutservice "gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/api/checkout"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/client/grpc/kube"
@@ -27,6 +26,12 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/repository"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/repository/transactor"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/db"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/grpc/client/wrapper"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/grpc/server/metrics"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/grpc/server/tracing"
+	logger "gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/grpc"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/zerolog"
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/ratelimit"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -44,15 +49,37 @@ func Run(cfg *config.Config) {
 	)
 	log.Info("config and logger init success")
 
-	lomsConn, err := grpc.Dial(cfg.LOMS.URL,
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	jaegerConfig, err := jaegercfg.FromEnv()
+	if err != nil {
+		return
+	}
+	jaegerConfig.Sampler = &jaegercfg.SamplerConfig{
+		Type:  cfg.SamplerType,
+		Param: cfg.SamplerParam,
+	}
+
+	closer, err := jaegerConfig.InitGlobalTracer(cfg.Service.Name)
+	if err != nil {
+		log.Fatal(err, "cannot init tracing")
+	}
+	defer func(closer io.Closer) {
+		err = closer.Close()
+		if err != nil {
+			log.Fatal(err, "cannot close tracing")
+		}
+	}(closer)
+
+	lomsConn, err := wrapper.NewClient(cfg.LOMS.URL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		log.Fatal(err, "error while dialing loms grpc server")
 	}
 	lomsClient := loms.NewClient(lomsConn)
 
-	productConn, err := grpc.Dial(cfg.ProductService.URL,
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	productConn, err := wrapper.NewClient(cfg.ProductService.URL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		log.Fatal(err, "error while dialing product service grpc server")
 	}
@@ -99,12 +126,15 @@ func Run(cfg *config.Config) {
 
 	s := grpc.NewServer(
 		grpc.UnaryInterceptor(grpcMiddleware.ChainUnaryServer(
-			interceptor.UnaryServerInterceptor(zerolog.New(
-				os.Stdout,
-				cfg.Log.Level,
-				fmt.Sprintf("%v-grpc", cfg.Service.Name),
-			)),
-			metricsInterceptor.UnaryServerInterceptor(),
+			logger.UnaryServerInterceptor(
+				zerolog.New(
+					os.Stdout,
+					cfg.Log.Level,
+					fmt.Sprintf("%v-grpc", cfg.Service.Name),
+				),
+			),
+			metrics.UnaryServerInterceptor(),
+			tracing.UnaryServerInterceptor(opentracing.GlobalTracer()),
 		)),
 	)
 
@@ -120,7 +150,8 @@ func Run(cfg *config.Config) {
 	}
 	defer pool.Close()
 
-	tx := transactor.New(pool)
+	dbClient := db.NewDBClient(pool, opentracing.GlobalTracer())
+	tx := transactor.New(dbClient)
 	repo := repository.New(tx, tx, zerolog.New(
 		os.Stdout,
 		cfg.Log.Level,
@@ -132,16 +163,6 @@ func Run(cfg *config.Config) {
 	grpchealth.RegisterHealthServer(s, health.NewServer())
 	reflection.Register(s)
 	checkout.RegisterCheckoutServer(s, checkoutservice.New(model))
-
-	http.Handle("/metrics", metrics.New())
-
-	go func() {
-		err = http.ListenAndServe(":8080", nil)
-		if err != nil {
-			log.Fatal(err, "error while listening http")
-		}
-	}()
-
 	go func() {
 		err = s.Serve(listener)
 		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
@@ -149,6 +170,14 @@ func Run(cfg *config.Config) {
 		}
 	}()
 	log.Infof("grpc server listening at %v", listener.Addr())
+
+	http.Handle("/metrics", metrics.New())
+	go func() {
+		err = http.ListenAndServe(net.JoinHostPort("", cfg.Metrics.Port), nil)
+		if err != nil {
+			log.Fatal(err, "error while listening http")
+		}
+	}()
 
 	<-ctx.Done()
 	cancel()

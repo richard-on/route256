@@ -5,6 +5,7 @@ git### JetBrains template
 package.json
 package-lock.json
 ./node_modules/
+./metrics/alertmanager.yml
 
 .idea/
 

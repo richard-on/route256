@@ -18,6 +18,7 @@ var (
 type Config struct {
 	Service             `yaml:"service"`
 	Log                 `yaml:"log"`
+	Observability       `yaml:"observability"`
 	Postgres            `yaml:"postgres"`
 	Kubernetes          `yaml:"kubernetes"`
 	GRPC                `yaml:"grpc"`
@@ -34,6 +35,20 @@ type Service struct {
 
 type Log struct {
 	Level string `yaml:"logLevel"`
+}
+
+type Observability struct {
+	Metrics `yaml:"metrics"`
+	Jaeger  `yaml:"jaeger"`
+}
+
+type Metrics struct {
+	Port string `yaml:"port"`
+}
+
+type Jaeger struct {
+	SamplerType  string  `yaml:"samplerType"`
+	SamplerParam float64 `yaml:"samplerParam"`
 }
 
 type Postgres struct {

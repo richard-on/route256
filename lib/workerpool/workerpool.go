@@ -180,5 +180,4 @@ func worker[In, Out any](ctx context.Context, wg *sync.WaitGroup,
 
 	// Signal that this worker has exited.
 	wg.Done()
-	return
 }

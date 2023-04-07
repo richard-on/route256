@@ -19,9 +19,11 @@ logs:
 
 .PHONY: metrics
 metrics:
-	mkdir -p metrics/data
-	sudo chmod -R 777 metrics/data
-	cd metrics && sudo docker compose up -d
+	cd metrics && docker compose up -d --force-recreate
+
+.PHONY: tracing
+tracing:
+	cd tracing && docker compose up -d --force-recreate
 
 clean:
 	sudo rm -rf ./logs/data/*
@@ -44,6 +46,7 @@ migrate:
 	cd loms && exec ./migration.sh
 
 precommit:
+	cd lib && go mod tidy && make precommit
 	cd checkout && go mod tidy && make precommit
 	cd loms && go mod tidy && make precommit
 	cd notification && go mod tidy && make precommit

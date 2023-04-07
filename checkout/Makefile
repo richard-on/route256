@@ -10,7 +10,7 @@ PROTOPATH=api/checkout/v1
 RPCPATH=pkg/checkout
 PROTOVER=v1
 BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
-APPVER=0.4.2
+APPVER=0.5.1
 
 all: format build test lint
 

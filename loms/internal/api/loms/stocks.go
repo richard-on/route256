@@ -7,6 +7,8 @@ import (
 
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/api/loms/convert"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Stocks returns a number of available products with a given SKU in different warehouses.

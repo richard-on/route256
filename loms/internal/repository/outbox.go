@@ -26,8 +26,6 @@ func (r *Repository) AddMessageWithKey(ctx context.Context, key string, payload 
 		return err
 	}
 
-	r.log.RawSQL("AddMessageWithKey", raw, args)
-
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
 		r.log.PGTag("AddMessageWithKey", tag, err)
@@ -51,8 +49,6 @@ func (r *Repository) AddMessageWithoutKey(ctx context.Context, payload []byte) e
 		return err
 	}
 
-	r.log.RawSQL("AddMessageWithoutKey", raw, args)
-
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
 		r.log.PGTag("AddMessageWithoutKey", tag, err)
@@ -75,8 +71,6 @@ func (r *Repository) UpdateMessageStatus(ctx context.Context, id int64, status o
 	if err != nil {
 		return err
 	}
-
-	r.log.RawSQL("UpdateMessageStatus", raw, args)
 
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
@@ -102,8 +96,6 @@ func (r *Repository) DeleteMessage(ctx context.Context, id int64) error {
 	if err != nil {
 		return err
 	}
-
-	r.log.RawSQL("DeleteMessage", raw, args)
 
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {

@@ -23,8 +23,6 @@ func (r *Repository) PayOrder(ctx context.Context, orderID int64) error {
 		return err
 	}
 
-	r.log.RawSQL("PayOrder", raw, args)
-
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
 		r.log.PGTag("PayOrder", tag, err)

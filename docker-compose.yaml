@@ -5,13 +5,27 @@ networks:
     driver: bridge
 
 services:
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    restart: unless-stopped
+    networks:
+      - route256
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686" # web
+      - "14268:14268"
+      - "9411:9411"
+
   redpanda:
     image: docker.redpanda.com/redpandadata/console:latest
     restart: unless-stopped
     networks:
       - route256
     ports:
-      - "8080:8080"
+      - "8085:8080"
     environment:
       - KAFKA_BROKERS=kafka1:29091,kafka2:29092,kafka3:29093
 
@@ -166,6 +180,10 @@ services:
       - route256
     ports:
       - "30000:30000"
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+      - JAEGER_SAMPLER_MANAGER_HOST_PORT=jaeger:5778
 
   # PostgreSQL instance for LOMS service
   postgres-loms:
@@ -236,6 +254,10 @@ services:
       - route256
     ports:
       - "35000:35000"
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+      - JAEGER_SAMPLER_MANAGER_HOST_PORT=jaeger:5778
 
   # Notification service app
   notification:
@@ -246,6 +268,10 @@ services:
       - route256
     ports:
       - "40000:40000"
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
+      - JAEGER_SAMPLER_MANAGER_HOST_PORT=jaeger:5778
 
 volumes:
   checkout_data:

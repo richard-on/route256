@@ -2,13 +2,13 @@ package zerolog
 
 import (
 	"fmt"
-	"github.com/jackc/pgconn"
-	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/logger"
-	"google.golang.org/grpc"
 	"io"
 	"time"
 
+	"github.com/jackc/pgconn"
 	"github.com/rs/zerolog"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/logger"
+	"google.golang.org/grpc"
 )
 
 // Log  is a wrapper for a logging library.
@@ -106,24 +106,16 @@ func (l *Log) handleGRPC(event *zerolog.Event, req, resp interface{}, info *grpc
 		Msg("handling gRPC request/response")
 }
 
-func (l *Log) RawSQL(method, sql string, args any) {
-	l.log.Debug().
-		Str("method", method).
-		Str("sql", sql).
-		Interface("args", args).
-		Msg("raw sql query")
-}
-
 func (l *Log) PGTag(method string, tag pgconn.CommandTag, errors ...error) {
 	var op string
 	switch {
-	case tag.Update() == true:
+	case tag.Update():
 		op = "update"
-	case tag.Delete() == true:
+	case tag.Delete():
 		op = "delete"
-	case tag.Select() == true:
+	case tag.Select():
 		op = "select"
-	case tag.Insert() == true:
+	case tag.Insert():
 		op = "insert"
 	default:
 		op = "no_op"

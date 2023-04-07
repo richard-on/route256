@@ -1,9 +1,10 @@
 package logger
 
 import (
+	"time"
+
 	"github.com/jackc/pgconn"
 	"google.golang.org/grpc"
-	"time"
 )
 
 type Logger interface {
@@ -33,6 +34,5 @@ type GRPCLog interface {
 }
 
 type DBLog interface {
-	RawSQL(method, sql string, args any)
 	PGTag(method string, tag pgconn.CommandTag, errors ...error)
 }

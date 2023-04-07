@@ -2,12 +2,12 @@ package app
 
 import (
 	"context"
-	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/zerolog"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/Shopify/sarama"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/zerolog"
 	"gitlab.ozon.dev/rragusskiy/homework-1/notification/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/notification/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/notification/internal/message/broker/kafka"

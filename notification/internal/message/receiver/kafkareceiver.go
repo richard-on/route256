@@ -7,6 +7,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"gitlab.ozon.dev/rragusskiy/homework-1/notification/internal/message/broker/kafka"
+	"gitlab.ozon.dev/rragusskiy/homework-1/notification/pkg/logger"
 )
 
 type StatusReceiver struct {

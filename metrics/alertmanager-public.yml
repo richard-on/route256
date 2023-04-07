@@ -1,0 +1,15 @@
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 10m
+  receiver: 'telegram'
+
+receivers:
+  - name: 'telegram'
+    telegram_configs:
+      - bot_token: 'TG_TOKEN_INTENTIONALLY_HIDDEN'
+        api_url: 'https://api.telegram.org'
+        chat_id: 123456789
+        message: "⚠️*{{ .GroupLabels.alertname }}*⚠️\nSeverity: *{{ .CommonLabels.severity }}*\n{{ range .Alerts }}{{ .Annotations.description }}\n{{ end }}"
+        parse_mode: 'Markdown'

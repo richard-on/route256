@@ -7,8 +7,12 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 

@@ -5,16 +5,23 @@ package app
 import (
 	"context"
 	"fmt"
-	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/grpc/interceptor"
-	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/zerolog"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
+	jaegerconf "github.com/uber/jaeger-client-go/config"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/db"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/grpc/server/metrics"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/grpc/server/tracing"
+	logger "gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/grpc"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/zerolog"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
 	lomsservice "gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/api/loms"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
@@ -38,6 +45,26 @@ func Run(cfg *config.Config) {
 	)
 	log.Info("config and logger init success")
 
+	jaegerConfig, err := jaegerconf.FromEnv()
+	if err != nil {
+		return
+	}
+	jaegerConfig.Sampler = &jaegerconf.SamplerConfig{
+		Type:  cfg.SamplerType,
+		Param: cfg.SamplerParam,
+	}
+
+	closer, err := jaegerConfig.InitGlobalTracer(cfg.Service.Name)
+	if err != nil {
+		log.Fatal(err, "cannot init tracing")
+	}
+	defer func(closer io.Closer) {
+		err = closer.Close()
+		if err != nil {
+			log.Fatal(err, "cannot close tracing")
+		}
+	}(closer)
+
 	listener, err := net.Listen("tcp", net.JoinHostPort("", cfg.GRPC.Port))
 	if err != nil {
 		log.Fatal(err, "error while creating listener")
@@ -45,11 +72,15 @@ func Run(cfg *config.Config) {
 
 	s := grpc.NewServer(
 		grpc.UnaryInterceptor(grpcMiddleware.ChainUnaryServer(
-			interceptor.UnaryServerInterceptor(zerolog.New(
-				os.Stdout,
-				cfg.Log.Level,
-				fmt.Sprintf("%v-grpc", cfg.Service.Name),
-			)),
+			logger.UnaryServerInterceptor(
+				zerolog.New(
+					os.Stdout,
+					cfg.Log.Level,
+					fmt.Sprintf("%v-grpc", cfg.Service.Name),
+				),
+			),
+			metrics.UnaryServerInterceptor(),
+			tracing.UnaryServerInterceptor(opentracing.GlobalTracer()),
 		)),
 	)
 
@@ -69,7 +100,8 @@ func Run(cfg *config.Config) {
 	}
 	defer pool.Close()
 
-	tx := transactor.New(pool)
+	dbClient := db.NewDBClient(pool, opentracing.GlobalTracer())
+	tx := transactor.New(dbClient)
 	repo := repository.New(tx, tx, zerolog.New(
 		os.Stdout,
 		cfg.Log.Level,
@@ -108,7 +140,6 @@ func Run(cfg *config.Config) {
 	grpchealth.RegisterHealthServer(s, health.NewServer())
 	reflection.Register(s)
 	loms.RegisterLOMSServer(s, lomsservice.New(model))
-
 	go func() {
 		err = s.Serve(listener)
 		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
@@ -116,6 +147,14 @@ func Run(cfg *config.Config) {
 		}
 	}()
 	log.Infof("grpc server listening at %v", listener.Addr())
+
+	http.Handle("/metrics", metrics.New())
+	go func() {
+		err = http.ListenAndServe(net.JoinHostPort("", cfg.Metrics.Port), nil)
+		if err != nil {
+			log.Fatal(err, "error while listening http")
+		}
+	}()
 
 	// Start a separate goroutine to check and cancel unpaid orders.
 	unpaidErrChan := make(chan error)

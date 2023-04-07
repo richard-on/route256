@@ -21,5 +21,7 @@ scrape_configs:
     static_configs:
       - targets:
           - "checkout:8080"
-          #- "loms:8080"
-          #- "notification:8080"
+  - job_name: "loms"
+    static_configs:
+      - targets:
+          - "loms:8080"

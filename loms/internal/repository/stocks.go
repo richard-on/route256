@@ -26,8 +26,6 @@ func (r *Repository) GetStocks(ctx context.Context, sku uint32) ([]model.Stock, 
 		return nil, err
 	}
 
-	r.log.RawSQL("GetStocks", raw, args)
-
 	var stocks []schema.Stock
 	if err = pgxscan.Select(ctx, db, &stocks, raw, args...); err != nil {
 		return nil, err
@@ -50,8 +48,6 @@ func (r *Repository) IncreaseStock(ctx context.Context, sku int64, stock model.S
 	if err != nil {
 		return err
 	}
-
-	r.log.RawSQL("IncreaseStock", raw, args)
 
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
@@ -81,8 +77,6 @@ func (r *Repository) DecreaseStock(ctx context.Context, sku int64, stock model.S
 	if err != nil {
 		return err
 	}
-
-	r.log.RawSQL("DecreaseStock", raw, args)
 
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {

@@ -26,8 +26,6 @@ func (r *Repository) CancelOrder(ctx context.Context, orderID int64) error {
 		return err
 	}
 
-	r.log.RawSQL("CancelOrder", raw, args)
-
 	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
 		r.log.PGTag("CancelOrder", tag, err)
