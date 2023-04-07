@@ -5,6 +5,8 @@ package app
 import (
 	"context"
 	"fmt"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/grpc/interceptor"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/zerolog"
 	"net"
 	"os"
 	"os/signal"
@@ -13,7 +15,6 @@ import (
 	grpcMiddleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/pkg/errors"
-	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/config"
 	lomsservice "gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/api/loms"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
@@ -30,7 +31,7 @@ import (
 
 // Run creates and runs the service using provided config.
 func Run(cfg *config.Config) {
-	log := logger.New(
+	log := zerolog.New(
 		os.Stdout,
 		cfg.Log.Level,
 		cfg.Service.Name,
@@ -42,15 +43,13 @@ func Run(cfg *config.Config) {
 		log.Fatal(err, "error while creating listener")
 	}
 
-	grpcLogger := logger.New(
-		os.Stdout,
-		cfg.Log.Level,
-		fmt.Sprintf("%v-grpc", cfg.Service.Name),
-	)
-
 	s := grpc.NewServer(
 		grpc.UnaryInterceptor(grpcMiddleware.ChainUnaryServer(
-			logger.UnaryServerInterceptor(grpcLogger),
+			interceptor.UnaryServerInterceptor(zerolog.New(
+				os.Stdout,
+				cfg.Log.Level,
+				fmt.Sprintf("%v-grpc", cfg.Service.Name),
+			)),
 		)),
 	)
 
@@ -71,7 +70,11 @@ func Run(cfg *config.Config) {
 	defer pool.Close()
 
 	tx := transactor.New(pool)
-	repo := repository.New(tx, tx)
+	repo := repository.New(tx, tx, zerolog.New(
+		os.Stdout,
+		cfg.Log.Level,
+		fmt.Sprintf("%v-postgres", cfg.Service.Name),
+	))
 
 	producer, err := kafka.NewAsyncProducer(cfg.Kafka)
 	if err != nil {

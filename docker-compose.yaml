@@ -1,9 +1,15 @@
 version: "3.9"
 
+networks:
+  route256:
+    driver: bridge
+
 services:
   redpanda:
     image: docker.redpanda.com/redpandadata/console:latest
     restart: unless-stopped
+    networks:
+      - route256
     ports:
       - "8080:8080"
     environment:
@@ -12,6 +18,8 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     restart: unless-stopped
+    networks:
+      - route256
     ports:
       - "2181:2181"
       - "2888:2888"
@@ -36,6 +44,8 @@ services:
       test: ps augwwx | egrep Kafka
     depends_on:
       - zookeeper
+    networks:
+      - route256
     ports:
       - "9091:9091"
     environment:
@@ -54,6 +64,8 @@ services:
       test: ps augwwx | egrep Kafka
     depends_on:
       - zookeeper
+    networks:
+      - route256
     ports:
       - "9092:9092"
     environment:
@@ -72,6 +84,8 @@ services:
       test: ps augwwx | egrep Kafka
     depends_on:
       - zookeeper
+    networks:
+      - route256
     ports:
       - "9093:9093"
     environment:
@@ -87,6 +101,8 @@ services:
   postgres-checkout:
     image: postgres:15.1
     restart: unless-stopped
+    networks:
+      - route256
     environment:
       - POSTGRES_DB=checkout
       - POSTGRES_USER=admin
@@ -115,6 +131,8 @@ services:
     image: richardhere/odyssey:latest
     environment:
       CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
+    networks:
+      - route256
     ports:
       - "6422:6422"
     volumes:
@@ -124,6 +142,8 @@ services:
   # pgBouncer instance for LOMS service
 #  pgbouncer-checkout:
 #    image: edoburu/pgbouncer
+#    networks:
+#      - route256
 #    environment:
 #      - DB_USER=admin
 #      - DB_PASSWORD=pgpswd
@@ -142,6 +162,8 @@ services:
     depends_on:
       - postgres-checkout
       - odyssey-checkout
+    networks:
+      - route256
     ports:
       - "30000:30000"
 
@@ -149,6 +171,8 @@ services:
   postgres-loms:
     image: postgres:15.1
     restart: unless-stopped
+    networks:
+      - route256
     environment:
       - POSTGRES_DB=loms
       - POSTGRES_USER=admin
@@ -177,6 +201,8 @@ services:
     image: richardhere/odyssey:latest
     environment:
       CMAKE_BUILD_TYPE: "${CMAKE_BUILD_TYPE:-Release}"
+    networks:
+      - route256
     ports:
       - "6442:6442"
     volumes:
@@ -186,6 +212,8 @@ services:
   # pgBouncer instance for LOMS service
 #  pgbouncer-loms:
 #    image: edoburu/pgbouncer
+#    networks:
+#      - route256
 #    environment:
 #      - DB_USER=admin
 #      - DB_PASSWORD=pgpswd
@@ -204,6 +232,8 @@ services:
     depends_on:
       - postgres-loms
       - odyssey-loms
+    networks:
+      - route256
     ports:
       - "35000:35000"
 
@@ -212,6 +242,8 @@ services:
     image: route256-notification
     restart: unless-stopped
     build: ./notification
+    networks:
+      - route256
     ports:
       - "40000:40000"
 

@@ -23,11 +23,15 @@ func (r *Repository) ReserveItem(ctx context.Context, orderID int64, sku int64, 
 		return err
 	}
 
-	exec, err := db.Exec(ctx, raw, args...)
+	r.log.RawSQL("ReserveItem", raw, args)
+
+	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
+		r.log.PGTag("ReserveItem", tag, err)
 		return err
 	}
-	if exec.RowsAffected() == 0 {
+	r.log.PGTag("ReserveItem", tag)
+	if tag.RowsAffected() == 0 {
 		return domain.ErrStockNotExists
 	}
 
@@ -47,6 +51,8 @@ func (r *Repository) RemoveItemsFromReserved(ctx context.Context, orderID int64)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	r.log.RawSQL("RemoveItemsFromReserved", raw, args)
 
 	var reserves []schema.Reserve
 	err = pgxscan.Select(ctx, db, &reserves, raw, args...)

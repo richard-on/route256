@@ -2,20 +2,22 @@ package kafka
 
 import (
 	"github.com/Shopify/sarama"
-	"github.com/rs/zerolog/log"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"
+	"gitlab.ozon.dev/rragusskiy/homework-1/notification/pkg/logger"
 	"google.golang.org/protobuf/proto"
 )
 
 // Consumer represents a Sarama consumer group consumer
 type Consumer struct {
 	ready chan struct{}
+	log   logger.Logger
 }
 
 // NewConsumer - constructor
-func NewConsumer() Consumer {
+func NewConsumer(log logger.Logger) Consumer {
 	return Consumer{
 		ready: make(chan struct{}),
+		log:   log,
 	}
 }
 
@@ -45,7 +47,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 			if err != nil {
 				return err
 			}
-			log.Printf("message claimed: value = %s, timestamp = %v, topic = %s",
+			c.log.Infof("message claimed: value = %s, timestamp = %v, topic = %s",
 				msg, message.Timestamp, message.Topic)
 			session.MarkMessage(message, "")
 

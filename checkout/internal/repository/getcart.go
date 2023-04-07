@@ -27,6 +27,8 @@ func (r *Repository) GetCartItems(ctx context.Context, userID int64) ([]model.It
 		return nil, err
 	}
 
+	r.log.RawSQL("GetCartItems", raw, args)
+
 	var items []schema.Item
 	if err = pgxscan.Select(ctx, db, &items, raw, args...); err != nil {
 		return nil, err
@@ -55,6 +57,8 @@ func (r *Repository) GetItemCartCount(ctx context.Context, userID int64, modelIt
 	if err != nil {
 		return 0, err
 	}
+
+	r.log.RawSQL("GetItemCartCount", raw, args)
 
 	var count int32
 	err = pgxscan.Get(ctx, db, &count, raw, args...)

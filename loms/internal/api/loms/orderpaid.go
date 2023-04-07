@@ -2,6 +2,10 @@ package loms
 
 import (
 	"context"
+	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/domain"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -11,12 +15,17 @@ import (
 func (l *LOMS) OrderPaid(ctx context.Context, req *loms.OrderPaidRequest) (*emptypb.Empty, error) {
 	err := validateOrder(req.GetOrderId())
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	err = l.domain.OrderPaid(ctx, req.GetOrderId())
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, domain.ErrNotExistsOrPaid):
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		default:
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	return &emptypb.Empty{}, nil

@@ -25,6 +25,8 @@ func (r *Repository) InsertOrderInfo(ctx context.Context, order model.Order) (in
 		return 0, err
 	}
 
+	r.log.RawSQL("InsertOrderInfo", raw, args)
+
 	var orderID int64
 	if err = pgxscan.Get(ctx, db, &orderID, raw, args...); err != nil {
 		return 0, err
@@ -51,9 +53,14 @@ func (r *Repository) InsertOrderItems(ctx context.Context, orderID int64, items 
 		return err
 	}
 
-	if _, err = db.Exec(ctx, raw, args...); err != nil {
+	r.log.RawSQL("InsertOrderItems", raw, args)
+
+	tag, err := db.Exec(ctx, raw, args...)
+	if err != nil {
+		r.log.PGTag("InsertOrderItems", tag, err)
 		return err
 	}
+	r.log.PGTag("InsertOrderItems", tag)
 
 	return nil
 }

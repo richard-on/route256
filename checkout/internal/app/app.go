@@ -5,7 +5,12 @@ package app
 import (
 	"context"
 	"fmt"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/metrics"
+	metricsInterceptor "gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/metrics/grpc"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/grpc/interceptor"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/zerolog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,7 +27,6 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/repository"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/repository/transactor"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
-	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/ratelimit"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -33,7 +37,7 @@ import (
 
 // Run creates and runs the service using provided config.
 func Run(cfg *config.Config) {
-	log := logger.New(
+	log := zerolog.New(
 		os.Stdout,
 		cfg.Log.Level,
 		cfg.Service.Name,
@@ -61,7 +65,11 @@ func Run(cfg *config.Config) {
 	// Execute if app is run inside kubernetes cluster.
 	if cfg.Service.Environment == "kubernetes" {
 		// Create a new Kubernetes client.
-		kubeClient, err := kube.NewInClusterClient(cfg.Kubernetes)
+		kubeClient, err := kube.NewInClusterClient(cfg.Kubernetes, zerolog.New(
+			os.Stdout,
+			cfg.Log.Level,
+			fmt.Sprintf("%v-kubeClient", cfg.Service.Name),
+		))
 		if err != nil {
 			log.Fatal(err, "error while creating kubernetes client")
 		}
@@ -89,15 +97,14 @@ func Run(cfg *config.Config) {
 		log.Fatal(err, "error while creating listener")
 	}
 
-	grpcLogger := logger.New(
-		os.Stdout,
-		cfg.Log.Level,
-		fmt.Sprintf("%v-grpc", cfg.Service.Name),
-	)
-
 	s := grpc.NewServer(
 		grpc.UnaryInterceptor(grpcMiddleware.ChainUnaryServer(
-			logger.UnaryServerInterceptor(grpcLogger),
+			interceptor.UnaryServerInterceptor(zerolog.New(
+				os.Stdout,
+				cfg.Log.Level,
+				fmt.Sprintf("%v-grpc", cfg.Service.Name),
+			)),
+			metricsInterceptor.UnaryServerInterceptor(),
 		)),
 	)
 
@@ -114,13 +121,26 @@ func Run(cfg *config.Config) {
 	defer pool.Close()
 
 	tx := transactor.New(pool)
-	repo := repository.New(tx, tx)
+	repo := repository.New(tx, tx, zerolog.New(
+		os.Stdout,
+		cfg.Log.Level,
+		fmt.Sprintf("%v-postgres", cfg.Service.Name),
+	))
 
 	model := domain.New(cfg.Service, repo, tx, lomsClient, productClient, lomsClient)
 
 	grpchealth.RegisterHealthServer(s, health.NewServer())
 	reflection.Register(s)
 	checkout.RegisterCheckoutServer(s, checkoutservice.New(model))
+
+	http.Handle("/metrics", metrics.New())
+
+	go func() {
+		err = http.ListenAndServe(":8080", nil)
+		if err != nil {
+			log.Fatal(err, "error while listening http")
+		}
+	}()
 
 	go func() {
 		err = s.Serve(listener)

@@ -2,6 +2,7 @@
 package main
 
 import (
+	"fmt"
 	"runtime"
 
 	"github.com/rs/zerolog/log"
@@ -12,11 +13,16 @@ import (
 func main() {
 	cfg, err := config.New()
 	if err != nil {
-		log.Fatal().Err(err).Msg("config load fail")
+		log.Fatal().
+			Str("component", "checkout-init").
+			Err(err).
+			Msg("config load fail")
 	}
 
-	log.Info().Msgf("loms service: version=%v, build=%v, protoVersion=%v, go version=%v",
-		config.Version, config.Build, config.ProtoVersion, runtime.Version())
+	log.Info().
+		Str("component", fmt.Sprintf("%v-init", cfg.Service.Name)).
+		Msgf("%v: version=%v, build=%v, protoVersion=%v, go version=%v",
+			cfg.Service.Name, config.Version, config.Build, config.ProtoVersion, runtime.Version())
 
 	app.Run(cfg)
 }

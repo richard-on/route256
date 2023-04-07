@@ -8,6 +8,11 @@ import (
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/model"
 )
 
+var (
+	// ErrInsufficientStocks is the error returned when current stock for an item is not enough to fulfill the order.
+	ErrInsufficientStocks = errors.New("insufficient stock")
+)
+
 // CreateOrder creates a new order for a user, reserves ordered products in a warehouse.
 func (d *Domain) CreateOrder(ctx context.Context, user int64, items []model.Item) (int64, error) {
 
@@ -69,8 +74,8 @@ func (d *Domain) CreateOrder(ctx context.Context, user int64, items []model.Item
 			}
 
 			if toReserve > 0 {
-				return fmt.Errorf("order %v: sku %v: request %v items: not enough in stock",
-					orderID, item.SKU, item.Count)
+				return fmt.Errorf("order %v: sku %v: request %v items: %w",
+					orderID, item.SKU, item.Count, ErrInsufficientStocks)
 			}
 		}
 

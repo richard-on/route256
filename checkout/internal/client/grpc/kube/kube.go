@@ -2,6 +2,7 @@ package kube
 
 import (
 	"context"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/logger"
 
 	"github.com/pkg/errors"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
@@ -14,18 +15,20 @@ import (
 type Client struct {
 	clientSet  *kubernetes.Clientset
 	kubeConfig config.Kubernetes
+	log        logger.Logger
 }
 
 // NewClient creates a new Kubernetes gRPC client.
-func NewClient(clientSet *kubernetes.Clientset, kubeConfig config.Kubernetes) *Client {
+func NewClient(clientSet *kubernetes.Clientset, kubeConfig config.Kubernetes, log logger.Logger) *Client {
 	return &Client{
 		clientSet:  clientSet,
 		kubeConfig: kubeConfig,
+		log:        log,
 	}
 }
 
 // NewInClusterClient creates a new Kubernetes gRPC client with InClusterConfig.
-func NewInClusterClient(kubeConfig config.Kubernetes) (*Client, error) {
+func NewInClusterClient(kubeConfig config.Kubernetes, log logger.Logger) (*Client, error) {
 	// Create the in-cluster kubernetes config.
 	clusterConfig, err := rest.InClusterConfig()
 	if err != nil {
@@ -41,6 +44,7 @@ func NewInClusterClient(kubeConfig config.Kubernetes) (*Client, error) {
 	return &Client{
 		clientSet:  clientSet,
 		kubeConfig: kubeConfig,
+		log:        log,
 	}, nil
 }
 
@@ -52,6 +56,7 @@ func (c *Client) GetReplicaCount(ctx context.Context) int {
 			LabelSelector: c.kubeConfig.LabelSelector,
 		})
 	if err != nil || len(pods.Items) < 1 {
+		c.log.Error(err, "getting replica count")
 		return 1
 	}
 

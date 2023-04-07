@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-
 	sq "github.com/Masterminds/squirrel"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/repository/convert"
@@ -25,9 +24,14 @@ func (r *Repository) AddToCart(ctx context.Context, userID int64, modelItem mode
 		return err
 	}
 
-	if _, err = db.Exec(ctx, raw, args...); err != nil {
+	r.log.RawSQL("AddToCart", raw, args)
+
+	tag, err := db.Exec(ctx, raw, args...)
+	if err != nil {
+		r.log.PGTag("AddToCart", tag, err)
 		return err
 	}
+	r.log.PGTag("AddToCart", tag)
 
 	return nil
 }

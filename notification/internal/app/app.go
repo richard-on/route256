@@ -2,12 +2,12 @@ package app
 
 import (
 	"context"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger/zerolog"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/Shopify/sarama"
-	"gitlab.ozon.dev/rragusskiy/homework-1/lib/logger"
 	"gitlab.ozon.dev/rragusskiy/homework-1/notification/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/notification/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/notification/internal/message/broker/kafka"
@@ -15,7 +15,7 @@ import (
 )
 
 func Run(cfg *config.Config) {
-	log := logger.New(
+	log := zerolog.New(
 		os.Stdout,
 		cfg.Log.Level,
 		cfg.Service.Name,
@@ -32,9 +32,9 @@ func Run(cfg *config.Config) {
 		log.Fatal(err, "creating kafka consumer group")
 	}
 
-	consumer := kafka.NewConsumer()
+	consumer := kafka.NewConsumer(log)
 
-	statusReceiver := receiver.NewStatusReceiver(consumerGroup, consumer)
+	statusReceiver := receiver.NewStatusReceiver(consumerGroup, consumer, log)
 
 	model := domain.New(cfg.Service, statusReceiver)
 
@@ -42,6 +42,7 @@ func Run(cfg *config.Config) {
 	if err != nil {
 		log.Fatalf(err, "subscribing to kafka topic: %v", cfg.Kafka.Topic)
 	}
+	log.Info("successfully subscribed to kafka topic")
 
 	<-ctx.Done()
 	cancel()

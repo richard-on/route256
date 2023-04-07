@@ -26,9 +26,14 @@ func (r *Repository) AddMessageWithKey(ctx context.Context, key string, payload 
 		return err
 	}
 
-	if _, err = db.Exec(ctx, raw, args...); err != nil {
+	r.log.RawSQL("AddMessageWithKey", raw, args)
+
+	tag, err := db.Exec(ctx, raw, args...)
+	if err != nil {
+		r.log.PGTag("AddMessageWithKey", tag, err)
 		return err
 	}
+	r.log.PGTag("AddMessageWithKey", tag)
 
 	return nil
 }
@@ -46,9 +51,14 @@ func (r *Repository) AddMessageWithoutKey(ctx context.Context, payload []byte) e
 		return err
 	}
 
-	if _, err = db.Exec(ctx, raw, args...); err != nil {
+	r.log.RawSQL("AddMessageWithoutKey", raw, args)
+
+	tag, err := db.Exec(ctx, raw, args...)
+	if err != nil {
+		r.log.PGTag("AddMessageWithoutKey", tag, err)
 		return err
 	}
+	r.log.PGTag("AddMessageWithoutKey", tag)
 
 	return nil
 }
@@ -66,11 +76,15 @@ func (r *Repository) UpdateMessageStatus(ctx context.Context, id int64, status o
 		return err
 	}
 
-	exec, err := db.Exec(ctx, raw, args...)
+	r.log.RawSQL("UpdateMessageStatus", raw, args)
+
+	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
+		r.log.PGTag("UpdateMessageStatus", tag, err)
 		return err
 	}
-	if exec.RowsAffected() == 0 {
+	r.log.PGTag("UpdateMessageStatus", tag)
+	if tag.RowsAffected() == 0 {
 		return domain.ErrRecordNotExists
 	}
 
@@ -89,11 +103,15 @@ func (r *Repository) DeleteMessage(ctx context.Context, id int64) error {
 		return err
 	}
 
-	exec, err := db.Exec(ctx, raw, args...)
+	r.log.RawSQL("DeleteMessage", raw, args)
+
+	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
+		r.log.PGTag("DeleteMessage", tag, err)
 		return err
 	}
-	if exec.RowsAffected() == 0 {
+	r.log.PGTag("DeleteMessage", tag)
+	if tag.RowsAffected() == 0 {
 		return domain.ErrRecordNotExists
 	}
 
