@@ -2,7 +2,6 @@ package receiver
 
 import (
 	"context"
-	"gitlab.ozon.dev/rragusskiy/homework-1/notification/pkg/logger"
 	"sync"
 
 	"github.com/Shopify/sarama"

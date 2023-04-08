@@ -2,8 +2,6 @@ package loms
 
 import (
 	"context"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/internal/api/loms/convert"
 	"gitlab.ozon.dev/rragusskiy/homework-1/loms/pkg/loms"

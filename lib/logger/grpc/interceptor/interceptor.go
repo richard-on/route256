@@ -2,12 +2,12 @@ package interceptor
 
 import (
 	"context"
-	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/logger"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"time"
 
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/logger"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // UnaryServerInterceptor logs gRPC requests using Logger.

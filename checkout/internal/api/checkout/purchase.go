@@ -2,10 +2,6 @@ package checkout
 
 import (
 	"context"
-	"github.com/pkg/errors"
-	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/pkg/errors"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain"

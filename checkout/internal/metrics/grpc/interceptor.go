@@ -2,10 +2,11 @@ package grpc
 
 import (
 	"context"
+	"time"
+
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/metrics"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
-	"time"
 )
 
 // UnaryServerInterceptor handles metrics.

@@ -2,7 +2,6 @@ package kube
 
 import (
 	"context"
-	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/logger"
 
 	"github.com/pkg/errors"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"

@@ -8,6 +8,7 @@ package domain
 
 import (
 	"context"
+
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/model"
 )

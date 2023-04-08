@@ -28,8 +28,6 @@ func (r *Repository) ListOrderInfo(ctx context.Context, orderID int64) (model.Or
 		return model.Order{}, err
 	}
 
-	r.log.RawSQL("ListOrderInfo", raw, args)
-
 	var orderInfo schema.Order
 	err = pgxscan.Get(ctx, db, &orderInfo, raw, args...)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -55,8 +53,6 @@ func (r *Repository) ListOrderItems(ctx context.Context, orderID int64) ([]model
 	if err != nil {
 		return nil, err
 	}
-
-	r.log.RawSQL("ListOrderItems", raw, args)
 
 	var items []schema.Item
 	err = pgxscan.Select(ctx, db, &items, raw, args...)
