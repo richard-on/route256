@@ -3,19 +3,30 @@ package checkout
 import (
 	"context"
 
+	"github.com/pkg/errors"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // ListCart lists all products that are currently in a user's cart.
 func (c *Checkout) ListCart(ctx context.Context, req *checkout.ListCartRequest) (*checkout.ListCartResponse, error) {
 	err := validateUser(req.GetUser())
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	items, totalPrice, err := c.domain.ListCart(ctx, req.GetUser())
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, domain.ErrEmptyCart):
+			return nil, status.Error(codes.FailedPrecondition, err.Error())
+		case status.Code(err) == codes.ResourceExhausted:
+			return nil, err
+		default:
+			return nil, status.Error(codes.Internal, err.Error())
+		}
 	}
 
 	itemsResp := make([]*checkout.Item, 0, len(items))

@@ -51,9 +51,12 @@ func (r *Repository) InsertOrderItems(ctx context.Context, orderID int64, items 
 		return err
 	}
 
-	if _, err = db.Exec(ctx, raw, args...); err != nil {
+	tag, err := db.Exec(ctx, raw, args...)
+	if err != nil {
+		r.log.PGTag("InsertOrderItems", tag, err)
 		return err
 	}
+	r.log.PGTag("InsertOrderItems", tag)
 
 	return nil
 }

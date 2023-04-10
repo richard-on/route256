@@ -4,3 +4,4 @@
 /internal/client/grpc/kube/.kube
 
 config/config.yaml
+config/config-win.yaml

@@ -25,9 +25,12 @@ func (r *Repository) DecreaseItemCartCount(ctx context.Context, userID int64, mo
 		return err
 	}
 
-	if _, err = db.Exec(ctx, raw, args...); err != nil {
+	tag, err := db.Exec(ctx, raw, args...)
+	if err != nil {
+		r.log.PGTag("DecreaseItemCartCount", tag, err)
 		return err
 	}
+	r.log.PGTag("DecreaseItemCartCount", tag)
 
 	return nil
 }
@@ -46,9 +49,12 @@ func (r *Repository) DeleteItemCart(ctx context.Context, userID int64, sku uint3
 		return err
 	}
 
-	if _, err = db.Exec(ctx, raw, args...); err != nil {
+	tag, err := db.Exec(ctx, raw, args...)
+	if err != nil {
+		r.log.PGTag("DeleteItemCart", tag, err)
 		return err
 	}
+	r.log.PGTag("DeleteItemCart", tag)
 
 	return nil
 }
@@ -66,9 +72,12 @@ func (r *Repository) ClearCart(ctx context.Context, userID int64) error {
 		return err
 	}
 
-	if _, err = db.Exec(ctx, raw, args...); err != nil {
+	tag, err := db.Exec(ctx, raw, args...)
+	if err != nil {
+		r.log.PGTag("ClearCart", tag, err)
 		return err
 	}
+	r.log.PGTag("ClearCart", tag)
 
 	return nil
 }

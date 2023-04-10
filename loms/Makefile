@@ -10,7 +10,7 @@ PROTOPATH=api/loms/v1
 RPCPATH=pkg/loms
 PROTOVER=v1
 BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
-APPVER=0.5.0
+APPVER=0.6.1
 
 all: format build test lint
 

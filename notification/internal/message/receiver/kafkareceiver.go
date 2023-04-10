@@ -5,19 +5,21 @@ import (
 	"sync"
 
 	"github.com/Shopify/sarama"
-	"github.com/rs/zerolog/log"
 	"gitlab.ozon.dev/rragusskiy/homework-1/notification/internal/message/broker/kafka"
+	"gitlab.ozon.dev/rragusskiy/homework-1/notification/pkg/logger"
 )
 
 type StatusReceiver struct {
 	consumerGroup  sarama.ConsumerGroup
 	statusConsumer kafka.Consumer
+	log            logger.Logger
 }
 
-func NewStatusReceiver(consumerGroup sarama.ConsumerGroup, consumer kafka.Consumer) *StatusReceiver {
+func NewStatusReceiver(consumerGroup sarama.ConsumerGroup, consumer kafka.Consumer, log logger.Logger) *StatusReceiver {
 	return &StatusReceiver{
 		consumerGroup:  consumerGroup,
 		statusConsumer: consumer,
+		log:            log,
 	}
 }
 
@@ -28,23 +30,23 @@ func (r *StatusReceiver) Subscribe(ctx context.Context, topic string) error {
 		defer wg.Done()
 		for {
 			if err := r.consumerGroup.Consume(ctx, []string{topic}, &r.statusConsumer); err != nil {
-				log.Error().Err(err).Msgf("error consuming kafka topic: %v", topic)
+				r.log.Errorf(err, "error consuming kafka topic: %v", topic)
 			}
 			// check if context was cancelled, signaling that the consumer should stop.
 			if ctx.Err() != nil {
+				r.log.Debug("got signal to stop consumer")
 				return
 			}
 		}
 	}()
 
 	<-r.statusConsumer.Ready() // Wait till the consumer has been set up.
-	log.Info().Msg("sarama consumer up and running")
+	r.log.Info("sarama consumer up and running")
 
 	wg.Wait()
 	if err := r.consumerGroup.Close(); err != nil {
-		log.Fatal().Err(err).Msg("error closing client")
+		r.log.Fatal(err, "closing client")
 	}
 
 	return nil
-
 }

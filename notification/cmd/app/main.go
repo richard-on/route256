@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"runtime"
 
 	"github.com/rs/zerolog/log"
@@ -11,11 +12,16 @@ import (
 func main() {
 	cfg, err := config.New()
 	if err != nil {
-		log.Fatal().Err(err).Msg("config load fail")
+		log.Fatal().
+			Str("component", "notification-init").
+			Err(err).
+			Msg("config load fail")
 	}
 
-	log.Info().Msgf("notification service: version=%v, build=%v, go version=%v",
-		config.Version, config.Build, runtime.Version())
+	log.Info().
+		Str("component", fmt.Sprintf("%v-init", cfg.Service.Name)).
+		Msgf("%v: version=%v, build=%v, go version=%v",
+			cfg.Service.Name, config.Version, config.Build, runtime.Version())
 
 	app.Run(cfg)
 }

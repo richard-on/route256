@@ -14,7 +14,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.29.0
 	github.com/stretchr/testify v1.8.1
-	gitlab.ozon.dev/rragusskiy/homework-1/lib v0.0.0-20230322154410-776eb9dfaa07
 	go.uber.org/multierr v1.5.0
 	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.30.0

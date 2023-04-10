@@ -1,0 +1,31 @@
+groups:
+  - name: alerts
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Instance {{ $labels.instance }} of {{ $labels.job }} service has been down for more than 1 minute."
+
+      - alert: TooManyErrors
+        expr: 'sum(rate(route256_grpc_server_responses_total{status!="OK"}[1m])) /
+         sum(rate(route256_grpc_server_responses_total{status="OK"}[1m])) > 0.25'
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Service {{ $labels.job }} returns too many errors"
+          description: "Instance {{ $labels.instance }} of {{ $labels.job }} returns too many errors."
+
+      - alert: HighResponseLatency
+        expr: 'histogram_quantile(0.5, sum by(le)
+         (rate(route256_grpc_server_histogram_response_time_seconds_bucket{}[1m]))) > 1'
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Service {{ $labels.job }} is experiencing high response latency"
+          description: "Instance {{ $labels.instance }} of {{ $labels.job }} service is experiencing high response latency."

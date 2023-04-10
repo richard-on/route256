@@ -6,7 +6,7 @@ LINTVER=v1.51.1
 LINTBIN=${BINDIR}/lint_${GOVER}_${LINTVER}
 PACKAGE=gitlab.ozon.dev/rragusskiy/homework-1/notification/cmd/app
 BUILDDATE=$(shell date -u +%Y%m%d.%H%M%S)
-APPVER=0.1.0
+APPVER=0.1.1
 
 all: format build test lint
 

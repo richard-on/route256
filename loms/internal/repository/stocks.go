@@ -49,11 +49,13 @@ func (r *Repository) IncreaseStock(ctx context.Context, sku int64, stock model.S
 		return err
 	}
 
-	exec, err := db.Exec(ctx, raw, args...)
+	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
+		r.log.PGTag("IncreaseStock", tag, err)
 		return err
 	}
-	if exec.RowsAffected() == 0 {
+	r.log.PGTag("IncreaseStock", tag)
+	if tag.RowsAffected() == 0 {
 		return domain.ErrStockNotExists
 	}
 
@@ -76,11 +78,16 @@ func (r *Repository) DecreaseStock(ctx context.Context, sku int64, stock model.S
 		return err
 	}
 
-	exec, err := db.Exec(ctx, raw, args...)
+	tag, err := db.Exec(ctx, raw, args...)
 	if err != nil {
+		r.log.PGTag("DecreaseStock", tag, err)
 		return err
 	}
-	if exec.RowsAffected() == 0 {
+	r.log.PGTag("DecreaseStock", tag)
+	if tag.RowsAffected() == 0 {
+		return domain.ErrStockNotExists
+	}
+	if tag.RowsAffected() == 0 {
 		return domain.ErrStockNotExists
 	}
 
