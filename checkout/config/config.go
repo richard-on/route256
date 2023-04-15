@@ -83,6 +83,12 @@ type ProductService struct {
 	Token     string    `yaml:"token"`
 	URL       string    `yaml:"url"`
 	RateLimit RateLimit `yaml:"rateLimit"`
+	Cache     Cache     `yaml:"cache"`
+}
+
+type Cache struct {
+	Size int           `yaml:"size"`
+	TTL  time.Duration `yaml:"ttl"`
 }
 
 type NotificationService struct{}

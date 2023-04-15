@@ -19,13 +19,17 @@ import (
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/config"
 	checkoutservice "gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/api/checkout"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/cache/productcacher"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/client/grpc/kube"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/client/grpc/loms"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/client/grpc/productservice"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/domain"
+	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/model"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/repository"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/internal/repository/transactor"
 	"gitlab.ozon.dev/rragusskiy/homework-1/checkout/pkg/checkout"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/cache"
+	"gitlab.ozon.dev/rragusskiy/homework-1/lib/cache/lru"
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/db"
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/grpc/client/wrapper"
 	"gitlab.ozon.dev/rragusskiy/homework-1/lib/grpc/server/metrics"
@@ -158,11 +162,15 @@ func Run(cfg *config.Config) {
 		fmt.Sprintf("%v-postgres", cfg.Service.Name),
 	))
 
-	model := domain.New(cfg.Service, repo, tx, lomsClient, productClient, lomsClient)
+	productCache := cache.NewCache[uint32, model.ProductInfo](cfg.ProductService.URL,
+		lru.New[uint32, model.ProductInfo](cfg.ProductService.Cache.Size, cfg.ProductService.Cache.TTL))
+	cachedProduct := productcacher.NewCachedProductServiceClient(productClient, productCache)
+
+	d := domain.New(cfg.Service, repo, tx, lomsClient, cachedProduct, lomsClient)
 
 	grpchealth.RegisterHealthServer(s, health.NewServer())
 	reflection.Register(s)
-	checkout.RegisterCheckoutServer(s, checkoutservice.New(model))
+	checkout.RegisterCheckoutServer(s, checkoutservice.New(d))
 	go func() {
 		err = s.Serve(listener)
 		if err != nil && !errors.Is(err, grpc.ErrServerStopped) {
